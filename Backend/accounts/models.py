@@ -11,6 +11,10 @@ class User(AbstractUser):
     is_active      = models.BooleanField(default=True)
     is_admin       = models.BooleanField(default=False)
 
+    @property
+    def full_name(self):
+        return f"{self.first_name} {self.last_name}".strip() or self.phone
+
     # login with phone not username
     USERNAME_FIELD  = 'phone'
     REQUIRED_FIELDS = ['username']
