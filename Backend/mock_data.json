@@ -1,21 +1,21 @@
 {
-  "_readme": "Mock data for HamAbzar frontend development. Replace API calls with this JSON while backend is not yet connected. All coordinates are approximate city-center offsets — no exact addresses are exposed.",
+  "_راهنما": "داده‌های mock برای فرانت‌اند همابزار. تا زمانی که بکاند آماده نشده، از این JSON به جای API واقعی استفاده کنید. مختصات جغرافیایی تقریبی هستند — آدرس دقیق صاحب ابزار نمایش داده نمی‌شود.",
   "categories": [
-    { "id": 1, "name": "Drill" },
-    { "id": 2, "name": "Ladder" },
-    { "id": 3, "name": "Garden" },
-    { "id": 4, "name": "Welding" },
-    { "id": 5, "name": "Cleaning" },
-    { "id": 6, "name": "Woodworking" },
-    { "id": 7, "name": "Painting" },
-    { "id": 8, "name": "Measuring" }
+    { "id": 1, "name": "دریل و فرز" },
+    { "id": 2, "name": "نردبان" },
+    { "id": 3, "name": "باغبانی" },
+    { "id": 4, "name": "جوشکاری" },
+    { "id": 5, "name": "نظافت و شستشو" },
+    { "id": 6, "name": "نجاری" },
+    { "id": 7, "name": "رنگ‌کاری" },
+    { "id": 8, "name": "اندازه‌گیری" }
   ],
   "cities": [
-    { "id": 1, "name": "Tehran" },
-    { "id": 2, "name": "Isfahan" },
-    { "id": 3, "name": "Mashhad" },
-    { "id": 4, "name": "Shiraz" },
-    { "id": 5, "name": "Tabriz" }
+    { "id": 1, "name": "تهران" },
+    { "id": 2, "name": "اصفهان" },
+    { "id": 3, "name": "مشهد" },
+    { "id": 4, "name": "شیراز" },
+    { "id": 5, "name": "تبریز" }
   ],
   "tools": {
     "count": 12,
@@ -26,8 +26,8 @@
         "id": 1,
         "name": "دریل بوش ۱۳ میل",
         "description": "دریل چکشی حرفه‌ای مناسب بتون، فلز و چوب. دارای ۲ باتری یدک.",
-        "category": { "id": 1, "name": "Drill" },
-        "city": { "id": 1, "name": "Tehran" },
+        "category": { "id": 1, "name": "دریل و فرز" },
+        "city": { "id": 1, "name": "تهران" },
         "daily_price": 80000,
         "deposit_amount": 500000,
         "is_available": true,
@@ -39,14 +39,14 @@
           "rating": 4.7,
           "avatar": null
         },
-        "thumbnail": "https://placehold.co/300x200/e8f4f8/333?text=Drill"
+        "thumbnail": "https://placehold.co/300x200/e8f4f8/1a3c4d?text=دریل+بوش"
       },
       {
         "id": 2,
         "name": "نردبان آلومینیومی ۶ متری",
         "description": "نردبان تاشو دو طرفه با ارتفاع ۶ متر. حداکثر تحمل بار ۱۵۰ کیلوگرم.",
-        "category": { "id": 2, "name": "Ladder" },
-        "city": { "id": 1, "name": "Tehran" },
+        "category": { "id": 2, "name": "نردبان" },
+        "city": { "id": 1, "name": "تهران" },
         "daily_price": 60000,
         "deposit_amount": 800000,
         "is_available": true,
@@ -58,14 +58,14 @@
           "rating": 4.9,
           "avatar": null
         },
-        "thumbnail": "https://placehold.co/300x200/f0f8e8/333?text=Ladder"
+        "thumbnail": "https://placehold.co/300x200/f0f8e8/1a4d1a?text=نردبان"
       },
       {
         "id": 3,
         "name": "فرغون باغبانی",
-        "description": "فرغون فلزی تک چرخ مناسب حمل خاک و کود. ظرفیت ۸۰ لیتر.",
-        "category": { "id": 3, "name": "Garden" },
-        "city": { "id": 2, "name": "Isfahan" },
+        "description": "فرغون فلزی تک‌چرخ مناسب حمل خاک و کود. ظرفیت ۸۰ لیتر.",
+        "category": { "id": 3, "name": "باغبانی" },
+        "city": { "id": 2, "name": "اصفهان" },
         "daily_price": 30000,
         "deposit_amount": 200000,
         "is_available": true,
@@ -77,14 +77,14 @@
           "rating": 4.3,
           "avatar": null
         },
-        "thumbnail": "https://placehold.co/300x200/f8f4e8/333?text=Garden"
+        "thumbnail": "https://placehold.co/300x200/f8f4e8/4d3a1a?text=فرغون"
       },
       {
         "id": 4,
         "name": "دستگاه جوش اینورتر ۲۰۰ آمپر",
         "description": "دستگاه جوش برق اینورتر سبک با قابلیت جوشکاری الکترود. مناسب کارهای تعمیراتی.",
-        "category": { "id": 4, "name": "Welding" },
-        "city": { "id": 1, "name": "Tehran" },
+        "category": { "id": 4, "name": "جوشکاری" },
+        "city": { "id": 1, "name": "تهران" },
         "daily_price": 150000,
         "deposit_amount": 2000000,
         "is_available": false,
@@ -96,14 +96,14 @@
           "rating": 4.5,
           "avatar": null
         },
-        "thumbnail": "https://placehold.co/300x200/f8e8e8/333?text=Welding"
+        "thumbnail": "https://placehold.co/300x200/f8e8e8/4d1a1a?text=دستگاه+جوش"
       },
       {
         "id": 5,
         "name": "کارواش خانگی ۱۵۰ بار",
         "description": "واترجت برقی فشار ۱۵۰ بار با شلنگ ۸ متری. مناسب شستشوی ماشین و حیاط.",
-        "category": { "id": 5, "name": "Cleaning" },
-        "city": { "id": 3, "name": "Mashhad" },
+        "category": { "id": 5, "name": "نظافت و شستشو" },
+        "city": { "id": 3, "name": "مشهد" },
         "daily_price": 90000,
         "deposit_amount": 700000,
         "is_available": true,
@@ -115,14 +115,14 @@
           "rating": 4.8,
           "avatar": null
         },
-        "thumbnail": "https://placehold.co/300x200/e8e8f8/333?text=Pressure+Washer"
+        "thumbnail": "https://placehold.co/300x200/e8e8f8/1a1a4d?text=کارواش"
       },
       {
         "id": 6,
         "name": "اره گردبر حرفه‌ای",
         "description": "اره گردبر ۱۸۵ میل ۱۸۰۰ وات مناسب برش چوب، تخته و MDF.",
-        "category": { "id": 6, "name": "Woodworking" },
-        "city": { "id": 1, "name": "Tehran" },
+        "category": { "id": 6, "name": "نجاری" },
+        "city": { "id": 1, "name": "تهران" },
         "daily_price": 70000,
         "deposit_amount": 600000,
         "is_available": true,
@@ -134,14 +134,14 @@
           "rating": 4.2,
           "avatar": null
         },
-        "thumbnail": "https://placehold.co/300x200/f8f0e8/333?text=Circular+Saw"
+        "thumbnail": "https://placehold.co/300x200/f8f0e8/4d2a1a?text=اره+گردبر"
       },
       {
         "id": 7,
         "name": "کمپرسور هوا ۲۵ لیتری",
         "description": "کمپرسور برقی ۲۵ لیتر ۸ بار مناسب رنگ‌پاشی، پنچرگیری و ابزار بادی.",
-        "category": { "id": 7, "name": "Painting" },
-        "city": { "id": 4, "name": "Shiraz" },
+        "category": { "id": 7, "name": "رنگ‌کاری" },
+        "city": { "id": 4, "name": "شیراز" },
         "daily_price": 100000,
         "deposit_amount": 900000,
         "is_available": true,
@@ -153,14 +153,14 @@
           "rating": 4.6,
           "avatar": null
         },
-        "thumbnail": "https://placehold.co/300x200/e8f8f0/333?text=Compressor"
+        "thumbnail": "https://placehold.co/300x200/e8f8f0/1a4d2a?text=کمپرسور"
       },
       {
         "id": 8,
         "name": "ترازیاب لیزری خطی",
         "description": "ترازیاب لیزر سبز ۳۶۰ درجه با سه‌پایه. دقت ±۱ میلی‌متر در ۱۰ متر.",
-        "category": { "id": 8, "name": "Measuring" },
-        "city": { "id": 2, "name": "Isfahan" },
+        "category": { "id": 8, "name": "اندازه‌گیری" },
+        "city": { "id": 2, "name": "اصفهان" },
         "daily_price": 120000,
         "deposit_amount": 1200000,
         "is_available": true,
@@ -172,14 +172,14 @@
           "rating": 5.0,
           "avatar": null
         },
-        "thumbnail": "https://placehold.co/300x200/f0e8f8/333?text=Laser+Level"
+        "thumbnail": "https://placehold.co/300x200/f0e8f8/2a1a4d?text=ترازیاب+لیزری"
       },
       {
         "id": 9,
         "name": "سمپاش موتوری ۱۶ لیتری",
         "description": "سمپاش موتوری باغبانی با باک ۱۶ لیتر مناسب سمپاشی درخت و چمن.",
-        "category": { "id": 3, "name": "Garden" },
-        "city": { "id": 5, "name": "Tabriz" },
+        "category": { "id": 3, "name": "باغبانی" },
+        "city": { "id": 5, "name": "تبریز" },
         "daily_price": 50000,
         "deposit_amount": 400000,
         "is_available": true,
@@ -191,14 +191,14 @@
           "rating": 4.0,
           "avatar": null
         },
-        "thumbnail": "https://placehold.co/300x200/f8e8f0/333?text=Sprayer"
+        "thumbnail": "https://placehold.co/300x200/f8e8f0/4d1a2a?text=سمپاش"
       },
       {
         "id": 10,
         "name": "فرز آنگولر ۱۲۵ میل بوش",
         "description": "آنگل گرایندر ۱۱۰۰ وات با صفحه‌های برش و سمباده. مناسب فلزکاری.",
-        "category": { "id": 1, "name": "Drill" },
-        "city": { "id": 1, "name": "Tehran" },
+        "category": { "id": 1, "name": "دریل و فرز" },
+        "city": { "id": 1, "name": "تهران" },
         "daily_price": 55000,
         "deposit_amount": 450000,
         "is_available": true,
@@ -210,14 +210,14 @@
           "rating": 4.4,
           "avatar": null
         },
-        "thumbnail": "https://placehold.co/300x200/e8f8f8/333?text=Grinder"
+        "thumbnail": "https://placehold.co/300x200/e8f8f8/1a4d4d?text=فرز+آنگولر"
       },
       {
         "id": 11,
         "name": "پیستوله رنگ الکترواستاتیک",
         "description": "دستگاه رنگ‌پاشی هوایی با منبع ۱ لیتر. مناسب دیوار، کابینت و مبلمان.",
-        "category": { "id": 7, "name": "Painting" },
-        "city": { "id": 3, "name": "Mashhad" },
+        "category": { "id": 7, "name": "رنگ‌کاری" },
+        "city": { "id": 3, "name": "مشهد" },
         "daily_price": 85000,
         "deposit_amount": 600000,
         "is_available": true,
@@ -229,14 +229,14 @@
           "rating": 4.2,
           "avatar": null
         },
-        "thumbnail": "https://placehold.co/300x200/f4f8e8/333?text=Spray+Gun"
+        "thumbnail": "https://placehold.co/300x200/f4f8e8/2a4d1a?text=پیستوله+رنگ"
       },
       {
         "id": 12,
         "name": "اسکنر دیوار (دتکتور لوله و برق)",
         "description": "دتکتور دیوار برای پیدا کردن لوله‌های آب، کابل برق و استخوان‌بندی قبل از سوراخ‌کاری.",
-        "category": { "id": 8, "name": "Measuring" },
-        "city": { "id": 4, "name": "Shiraz" },
+        "category": { "id": 8, "name": "اندازه‌گیری" },
+        "city": { "id": 4, "name": "شیراز" },
         "daily_price": 40000,
         "deposit_amount": 350000,
         "is_available": true,
@@ -248,44 +248,47 @@
           "rating": 4.8,
           "avatar": null
         },
-        "thumbnail": "https://placehold.co/300x200/e8e8e8/333?text=Wall+Scanner"
+        "thumbnail": "https://placehold.co/300x200/e8e8e8/333?text=اسکنر+دیوار"
       }
     ]
   },
   "tool_detail_example": {
-    "id": 1,
-    "name": "دریل بوش ۱۳ میل",
-    "description": "دریل چکشی حرفه‌ای مناسب بتون، فلز و چوب. دارای ۲ باتری یدک. کیف حمل و ست کامل مته موجود است.",
-    "category": { "id": 1, "name": "Drill" },
-    "city": { "id": 1, "name": "Tehran" },
-    "daily_price": 80000,
-    "deposit_amount": 500000,
-    "is_available": true,
-    "rating": 4.8,
-    "created_at": "2025-05-10T08:00:00+03:30",
-    "owner": {
-      "id": 101,
-      "full_name": "علی رضایی",
-      "rating": 4.7,
-      "avatar": null
-    },
-    "images": [
-      {
-        "id": 1,
-        "image": "https://placehold.co/600x400/e8f4f8/333?text=Drill+Front",
-        "is_primary": true
+    "status": "success",
+    "data": {
+      "id": 1,
+      "name": "دریل بوش ۱۳ میل",
+      "description": "دریل چکشی حرفه‌ای مناسب بتون، فلز و چوب. دارای ۲ باتری یدک. کیف حمل و ست کامل مته موجود است. لطفاً ابزار را با همان لوازم پس دهید.",
+      "category": { "id": 1, "name": "دریل و فرز" },
+      "city": { "id": 1, "name": "تهران" },
+      "daily_price": 80000,
+      "deposit_amount": 500000,
+      "is_available": true,
+      "rating": 4.8,
+      "created_at": "2025-05-10T08:00:00+03:30",
+      "owner": {
+        "id": 101,
+        "full_name": "علی رضایی",
+        "rating": 4.7,
+        "avatar": null
       },
-      {
-        "id": 2,
-        "image": "https://placehold.co/600x400/e8f4f8/333?text=Drill+Side",
-        "is_primary": false
-      },
-      {
-        "id": 3,
-        "image": "https://placehold.co/600x400/e8f4f8/333?text=Drill+Kit",
-        "is_primary": false
-      }
-    ]
+      "images": [
+        {
+          "id": 1,
+          "image": "https://placehold.co/600x400/e8f4f8/1a3c4d?text=تصویر+جلو",
+          "is_primary": true
+        },
+        {
+          "id": 2,
+          "image": "https://placehold.co/600x400/e8f4f8/1a3c4d?text=تصویر+کنار",
+          "is_primary": false
+        },
+        {
+          "id": 3,
+          "image": "https://placehold.co/600x400/e8f4f8/1a3c4d?text=ست+کامل+مته",
+          "is_primary": false
+        }
+      ]
+    }
   },
   "availability_example": {
     "status": "success",
@@ -300,11 +303,36 @@
     }
   },
   "current_user_example": {
-    "id": 101,
-    "phone": "09121234567",
-    "full_name": "علی رضایی",
-    "wallet_balance": 5000000,
-    "rating": 4.7,
-    "avatar": null
+    "status": "success",
+    "data": {
+      "id": 101,
+      "phone": "09121234567",
+      "full_name": "علی رضایی",
+      "wallet_balance": 5000000,
+      "rating": 4.7,
+      "avatar": null
+    }
+  },
+  "error_examples": {
+    "401_unauthorized": {
+      "status": "error",
+      "message": "اعتبارسنجی انجام نشد. توکن ارائه نشده یا منقضی شده است."
+    },
+    "403_forbidden": {
+      "status": "error",
+      "message": "شما اجازه ویرایش این ابزار را ندارید."
+    },
+    "404_not_found": {
+      "status": "error",
+      "message": "ابزار مورد نظر یافت نشد."
+    },
+    "409_conflict": {
+      "status": "error",
+      "message": "این ابزار در تاریخ انتخابی رزرو است."
+    },
+    "400_bad_request_price": {
+      "status": "error",
+      "message": { "daily_price": ["قیمت روزانه باید عددی مثبت باشد."] }
+    }
   }
 }
