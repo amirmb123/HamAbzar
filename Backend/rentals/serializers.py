@@ -142,6 +142,7 @@ class ReviewCreateSerializer(serializers.Serializer):
     def validate(self, attrs):
         rental  = self.context['rental']
         request = self.context['request']
+        user    = request.user
 
         # فقط بعد از returned میشه امتیاز داد
         if rental.status != 'returned':
@@ -149,16 +150,28 @@ class ReviewCreateSerializer(serializers.Serializer):
                 "Reviews can only be submitted after the tool is returned."
             )
 
-        # نباید به خودت امتیاز بدی
-        if attrs['reviewed_id'] == request.user.id:
+        # تعیین طرف مقابل بر اساس نقش کاربر در rental
+        is_borrower = user.id == rental.borrower_id
+        is_owner    = user.id == rental.tool.owner_id
+
+        if is_borrower:
+            expected_reviewed_id = rental.tool.owner_id
+        elif is_owner:
+            expected_reviewed_id = rental.borrower_id
+        else:
+            # این حالت نباید پیش بیاد چون is_party در view چک شده
+            raise serializers.ValidationError("Access denied.")
+
+        # فقط باید به طرف مقابل امتیاز بدی
+        if attrs['reviewed_id'] != expected_reviewed_id:
             raise serializers.ValidationError(
-                "You cannot review yourself."
+                "You can only review the other party of this rental."
             )
 
         # قبلاً امتیاز دادی؟
         already = Review.objects.filter(
             rental=rental,
-            reviewer=request.user
+            reviewer=user,
         ).exists()
         if already:
             raise serializers.ValidationError(

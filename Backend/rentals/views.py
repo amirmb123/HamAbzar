@@ -351,7 +351,10 @@ class RentalCancelView(APIView):
                 {'status': 'error', 'message': 'Rental not found.'},
                 status=status.HTTP_404_NOT_FOUND,
             )
-        if not is_party(request.user, rental):
+        is_borrower = request.user.id == rental.borrower_id
+        is_owner    = request.user.id == rental.tool.owner_id
+
+        if not is_borrower and not is_owner:
             return Response(
                 {'status': 'error', 'message': 'Access denied.'},
                 status=status.HTTP_403_FORBIDDEN,
@@ -437,16 +440,22 @@ class ReviewCreateView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        Review.objects.create(
-            rental      = rental,
-            reviewer    = request.user,
-            reviewed    = reviewed,
-            rating      = data['rating'],
-            comment     = data.get('comment', ''),
-        )
+        with transaction.atomic():
+            Review.objects.create(
+                rental   = rental,
+                reviewer = request.user,
+                reviewed = reviewed,
+                rating   = data['rating'],
+                comment  = data.get('comment', ''),
+            )
 
-        # آپدیت میانگین rating کاربر
-        update_user_rating(reviewed)
+            # قفل رکورد برای جلوگیری از race condition روی rating
+            reviewed_locked = (
+                reviewed.__class__._default_manager
+                .select_for_update()
+                .get(pk=reviewed.pk)
+            )
+            update_user_rating(reviewed_locked)
 
         return Response(
             {'status': 'success', 'message': 'Review submitted successfully.'},
