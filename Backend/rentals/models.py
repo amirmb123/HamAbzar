@@ -18,13 +18,12 @@ class Rental(models.Model):
     borrower     = models.ForeignKey(User, on_delete=models.PROTECT, related_name='rentals')
     start_date   = models.DateField()
     end_date     = models.DateField()
-    total_price  = models.PositiveIntegerField ()
-    deposit_held = models.PositiveIntegerField (default=0)
+    total_price  = models.PositiveIntegerField()
+    deposit_held = models.PositiveIntegerField(default=0)
     status       = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     admin_note   = models.TextField(blank=True)
     created_at   = models.DateTimeField(auto_now_add=True)
     updated_at   = models.DateTimeField(auto_now=True)
-
 
     def __str__(self):
         return f"Rental #{self.id} - {self.tool.name}"
@@ -38,24 +37,35 @@ class Transaction(models.Model):
         ('deposit_penalty', 'Deposit Penalty'),
     ]
 
-    rental     = models.ForeignKey(Rental, on_delete=models.PROTECT, related_name='transactions')
-    user       = models.ForeignKey(User, on_delete=models.PROTECT, related_name='transactions')
-    amount     = models.IntegerField()
-    type       = models.CharField(max_length=20, choices=TYPE_CHOICES)
-    note       = models.TextField(blank=True)
+    rental    = models.ForeignKey(Rental, on_delete=models.PROTECT, related_name='transactions')
+    from_user = models.ForeignKey(
+        User, on_delete=models.PROTECT,
+        related_name='outgoing_transactions',
+        null=True, blank=True,
+    )
+    to_user   = models.ForeignKey(
+        User, on_delete=models.PROTECT,
+        related_name='incoming_transactions',
+        null=True, blank=True,
+    )
+    amount    = models.PositiveIntegerField()
+    type      = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    note      = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.type} - {self.amount}"
+        from_name = self.from_user.phone if self.from_user else 'System'
+        to_name   = self.to_user.phone   if self.to_user   else 'System'
+        return f"{self.get_type_display()} | {from_name} → {to_name} | {self.amount:,}"
 
 
 class Review(models.Model):
-    rental      = models.ForeignKey(Rental, on_delete=models.PROTECT, related_name='reviews')
-    reviewer    = models.ForeignKey(User, on_delete=models.CASCADE, related_name='given_reviews')
-    reviewed    = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_reviews')
-    rating = models.SmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
-    comment     = models.TextField(blank=True)
-    created_at  = models.DateTimeField(auto_now_add=True)
+    rental     = models.ForeignKey(Rental, on_delete=models.PROTECT, related_name='reviews')
+    reviewer   = models.ForeignKey(User, on_delete=models.CASCADE, related_name='given_reviews')
+    reviewed   = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_reviews')
+    rating     = models.SmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    comment    = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = ['rental', 'reviewer']
