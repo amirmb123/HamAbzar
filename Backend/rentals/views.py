@@ -19,7 +19,7 @@ Business rules enforced here:
 
 from django.db import transaction
 from django.utils import timezone
-from django.db.models import Avg
+from django.db.models import Avg, Count
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -60,10 +60,11 @@ def is_party(user, rental):
 def update_user_rating(user):
     """میانگین rating کاربر رو از جدول reviews آپدیت کن"""
     result = Review.objects.filter(reviewed=user).aggregate(
-        avg=Avg('rating'), count=models.Count('id')
+        avg=Avg('rating'),
+        cnt=Count('id'),
     )
     user.rating       = result['avg'] or 0.0
-    user.rating_count = result['count'] or 0
+    user.rating_count = result['cnt']  or 0
     user.save(update_fields=['rating', 'rating_count'])
 
 
@@ -274,7 +275,7 @@ class RentalHandoverView(APIView):
 
 
 class RentalReturnView(APIView):
-    """POST /api/rentals/<id>/return/ — owner only → returned + release deposit"""
+    """POST /api/rentals/<id>/return/ — owner only → returned + pay owner + release deposit"""
     permission_classes = [IsAuthenticated]
 
     def post(self, request, rental_id):
@@ -296,20 +297,45 @@ class RentalReturnView(APIView):
             )
 
         with transaction.atomic():
-            # آزادسازی ضمانت
-            rental.borrower.wallet_balance += rental.deposit_held
-            rental.borrower.save(update_fields=['wallet_balance'])
+            # قفل کردن رکوردهای کاربران برای جلوگیری از race condition
+            borrower = (
+                rental.borrower.__class__._default_manager
+                .select_for_update()
+                .get(pk=rental.borrower_id)
+            )
+            owner = (
+                rental.tool.owner.__class__._default_manager
+                .select_for_update()
+                .get(pk=rental.tool.owner_id)
+            )
 
-            rental.status = 'returned'
-            rental.save(update_fields=['status', 'updated_at'])
+            # ۱. برگشت ضمانت به قرض‌گیرنده
+            borrower.wallet_balance += rental.deposit_held
+            borrower.save(update_fields=['wallet_balance'])
 
             Transaction.objects.create(
                 rental = rental,
-                user   = rental.borrower,
+                user   = borrower,
                 amount = rental.deposit_held,
                 type   = 'deposit_return',
                 note   = 'Deposit returned after successful rental.',
             )
+
+            # ۲. پرداخت اجاره به صاحب ابزار (escrow release)
+            owner.wallet_balance += rental.total_price
+            owner.save(update_fields=['wallet_balance'])
+
+            Transaction.objects.create(
+                rental = rental,
+                user   = owner,
+                amount = rental.total_price,
+                type   = 'rental_payment',
+                note   = f'Rental income for "{rental.tool.name}" (Rental #{rental.id}).',
+            )
+
+            # ۳. تغییر وضعیت
+            rental.status = 'returned'
+            rental.save(update_fields=['status', 'updated_at'])
 
         return Response({'status': 'success', 'data': RentalDetailSerializer(rental).data})
 
@@ -337,20 +363,35 @@ class RentalCancelView(APIView):
             )
 
         with transaction.atomic():
-            # برگشت کامل پول
+            # قفل کردن رکورد قرض‌گیرنده برای جلوگیری از race condition
+            borrower = (
+                rental.borrower.__class__._default_manager
+                .select_for_update()
+                .get(pk=rental.borrower_id)
+            )
+
+            # برگشت کامل پول (اجاره + ضمانت)
             refund = rental.total_price + rental.deposit_held
-            rental.borrower.wallet_balance += refund
-            rental.borrower.save(update_fields=['wallet_balance'])
+            borrower.wallet_balance += refund
+            borrower.save(update_fields=['wallet_balance'])
 
             rental.status = 'cancelled'
             rental.save(update_fields=['status', 'updated_at'])
 
+            # دو تراکنش جداگانه برای شفافیت حسابداری
             Transaction.objects.create(
                 rental = rental,
-                user   = rental.borrower,
-                amount = refund,
+                user   = borrower,
+                amount = rental.total_price,
+                type   = 'rental_payment',
+                note   = 'Rental payment refunded on cancellation.',
+            )
+            Transaction.objects.create(
+                rental = rental,
+                user   = borrower,
+                amount = rental.deposit_held,
                 type   = 'deposit_return',
-                note   = 'Full refund on cancellation.',
+                note   = 'Deposit refunded on cancellation.',
             )
 
         return Response({'status': 'success', 'data': RentalDetailSerializer(rental).data})
@@ -405,14 +446,7 @@ class ReviewCreateView(APIView):
         )
 
         # آپدیت میانگین rating کاربر
-        from django.db import models as django_models
-        result = Review.objects.filter(reviewed=reviewed).aggregate(
-            avg=django_models.Avg('rating'),
-            cnt=django_models.Count('id'),
-        )
-        reviewed.rating       = result['avg'] or 0.0
-        reviewed.rating_count = result['cnt']  or 0
-        reviewed.save(update_fields=['rating', 'rating_count'])
+        update_user_rating(reviewed)
 
         return Response(
             {'status': 'success', 'message': 'Review submitted successfully.'},
