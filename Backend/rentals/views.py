@@ -79,6 +79,12 @@ class RentalCreateView(APIView):
     def post(self, request):
         serializer = RentalCreateSerializer(data=request.data)
         if not serializer.is_valid():
+            # تداخل تاریخ → 409، بقیه خطاها → 400
+            if 'date_conflict' in serializer.errors:
+                return Response(
+                    {'status': 'error', 'message': serializer.errors['date_conflict'][0]},
+                    status=status.HTTP_409_CONFLICT,
+                )
             return Response(
                 {'status': 'error', 'message': serializer.errors},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -131,18 +137,20 @@ class RentalCreateView(APIView):
 
             # ثبت تراکنش‌های مالی
             Transaction.objects.create(
-                rental = rental,
-                user   = borrower,
-                amount = total_price,
-                type   = 'rental_payment',
-                note   = f'Rental payment for {tool.name}',
+                rental    = rental,
+                from_user = borrower,
+                to_user   = None,
+                amount    = total_price,
+                type      = 'rental_payment',
+                note      = f'Rental payment for {tool.name}',
             )
             Transaction.objects.create(
-                rental = rental,
-                user   = borrower,
-                amount = deposit_held,
-                type   = 'deposit_hold',
-                note   = f'Deposit hold for {tool.name}',
+                rental    = rental,
+                from_user = borrower,
+                to_user   = None,
+                amount    = deposit_held,
+                type      = 'deposit_hold',
+                note      = f'Deposit hold for {tool.name}',
             )
 
         return Response(
@@ -314,11 +322,12 @@ class RentalReturnView(APIView):
             borrower.save(update_fields=['wallet_balance'])
 
             Transaction.objects.create(
-                rental = rental,
-                user   = borrower,
-                amount = rental.deposit_held,
-                type   = 'deposit_return',
-                note   = 'Deposit returned after successful rental.',
+                rental    = rental,
+                from_user = None,
+                to_user   = borrower,
+                amount    = rental.deposit_held,
+                type      = 'deposit_return',
+                note      = 'Deposit returned after successful rental.',
             )
 
             # ۲. پرداخت اجاره به صاحب ابزار (escrow release)
@@ -326,11 +335,12 @@ class RentalReturnView(APIView):
             owner.save(update_fields=['wallet_balance'])
 
             Transaction.objects.create(
-                rental = rental,
-                user   = owner,
-                amount = rental.total_price,
-                type   = 'rental_payment',
-                note   = f'Rental income for "{rental.tool.name}" (Rental #{rental.id}).',
+                rental    = rental,
+                from_user = None,
+                to_user   = owner,
+                amount    = rental.total_price,
+                type      = 'rental_payment',
+                note      = f'Rental income for "{rental.tool.name}" (Rental #{rental.id}).',
             )
 
             # ۳. تغییر وضعیت
@@ -383,18 +393,20 @@ class RentalCancelView(APIView):
 
             # دو تراکنش جداگانه برای شفافیت حسابداری
             Transaction.objects.create(
-                rental = rental,
-                user   = borrower,
-                amount = rental.total_price,
-                type   = 'rental_payment',
-                note   = 'Rental payment refunded on cancellation.',
+                rental    = rental,
+                from_user = None,
+                to_user   = borrower,
+                amount    = rental.total_price,
+                type      = 'rental_payment',
+                note      = 'Rental payment refunded on cancellation.',
             )
             Transaction.objects.create(
-                rental = rental,
-                user   = borrower,
-                amount = rental.deposit_held,
-                type   = 'deposit_return',
-                note   = 'Deposit refunded on cancellation.',
+                rental    = rental,
+                from_user = None,
+                to_user   = borrower,
+                amount    = rental.deposit_held,
+                type      = 'deposit_return',
+                note      = 'Deposit refunded on cancellation.',
             )
 
         return Response({'status': 'success', 'data': RentalDetailSerializer(rental).data})
