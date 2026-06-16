@@ -1,19 +1,16 @@
+from django.shortcuts import render
+
 """
-disputes/views.py
------------------
-Views for the Disputes app.
-
-Endpoints:
-  GET   /api/disputes/           → list all disputes (admin only)
-  PATCH /api/disputes/<id>/resolve/  → resolve dispute + financial penalty (admin only)
-
+Dispute Views — همابزار
+────────────────────────────────────────────────
 Business rules:
-- Only users with is_admin=True can access these endpoints
-- Resolving a dispute:
-    1. Sets dispute status to 'resolved'
-    2. If penalty_amount provided → deduct from borrower's wallet and credit owner
-    3. Records a Transaction of type 'deposit_penalty'
-    4. Sets rental status back to 'returned' (dispute is over)
+  - فقط طرفین رزرو (borrower یا owner) می‌توانند شکایت ثبت کنند
+  - رزرو باید در وضعیت returned یا active باشد تا شکایت قابل ثبت باشد
+  - هر رزرو فقط یک شکایت می‌تواند داشته باشد (OneToOne)
+  - فقط ادمین می‌تواند شکایت را resolve کند
+  - هنگام resolve: penalty_amount از ضمانت borrower کسر و مابقی برمی‌گردد
+  - رزرو پس از resolve به وضعیت 'disputed' می‌رود
+  - همه عملیات مالی داخل transaction.atomic() انجام می‌شود
 """
 
 from django.db import transaction
@@ -25,78 +22,138 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 
 from .models import Dispute
-from rentals.models import Transaction
+from .serializers import DisputeCreateSerializer, DisputeResolveSerializer, DisputeSerializer
+from rentals.models import Rental, Transaction
 
 
 # ─────────────────────────────────────────────
-# Permission helper
+# Helper
 # ─────────────────────────────────────────────
 
-class IsAdminUser(IsAuthenticated):
-    """فقط کاربرانی که is_admin=True دارند."""
-    def has_permission(self, request, view):
-        return super().has_permission(request, view) and request.user.is_admin
+def get_rental_or_404(rental_id):
+    try:
+        return Rental.objects.select_related(
+            'tool', 'tool__owner', 'borrower'
+        ).get(pk=rental_id)
+    except Rental.DoesNotExist:
+        return None
+
+
+def is_party(user, rental):
+    return user.id in (rental.borrower_id, rental.tool.owner_id)
 
 
 # ─────────────────────────────────────────────
-# Dispute List (admin only)
+# POST /api/rentals/<id>/dispute/
+# ─────────────────────────────────────────────
+
+class DisputeCreateView(APIView):
+    """ثبت شکایت برای یک رزرو — توسط طرفین"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, rental_id):
+        rental = get_rental_or_404(rental_id)
+        if not rental:
+            return Response(
+                {'status': 'error', 'message': 'Rental not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # فقط طرفین رزرو
+        if not is_party(request.user, rental):
+            return Response(
+                {'status': 'error', 'message': 'Access denied.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # فقط در وضعیت active یا returned شکایت پذیرفته می‌شود
+        if rental.status not in ('active', 'returned'):
+            return Response(
+                {
+                    'status': 'error',
+                    'message': 'Disputes can only be raised for active or returned rentals.',
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # هر رزرو فقط یک شکایت
+        if hasattr(rental, 'dispute'):
+            return Response(
+                {'status': 'error', 'message': 'A dispute has already been raised for this rental.'},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        serializer = DisputeCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {'status': 'error', 'message': serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        dispute = Dispute.objects.create(
+            rental    = rental,
+            raised_by = request.user,
+            reason    = serializer.validated_data['reason'],
+            status    = 'open',
+        )
+
+        return Response(
+            {'status': 'success', 'data': DisputeSerializer(dispute).data},
+            status=status.HTTP_201_CREATED,
+        )
+
+
+# ─────────────────────────────────────────────
+# GET /api/disputes/   (ادمین فقط)
 # ─────────────────────────────────────────────
 
 class DisputeListView(APIView):
-    """
-    GET /api/disputes/
-    Admin only — paginated list of all disputes, newest first.
-    Optional filter: ?status=open|under_review|resolved
-    """
-    permission_classes = [IsAdminUser]
+    """لیست همه شکایت‌ها — فقط ادمین"""
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        qs = Dispute.objects.select_related(
-            'rental', 'rental__tool', 'raised_by', 'admin'
-        ).order_by('-created_at')
+        if not request.user.is_admin:
+            return Response(
+                {'status': 'error', 'message': 'Admin access required.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        disputes = (
+            Dispute.objects
+            .select_related('rental', 'rental__tool', 'raised_by', 'admin')
+            .order_by('-created_at')
+        )
 
         # فیلتر اختیاری بر اساس status
-        status_filter = request.query_params.get('status')
-        if status_filter:
-            qs = qs.filter(status=status_filter)
+        filter_status = request.query_params.get('status')
+        if filter_status:
+            disputes = disputes.filter(status=filter_status)
 
-        from rest_framework.pagination import PageNumberPagination
-        paginator = PageNumberPagination()
-        page = paginator.paginate_queryset(qs, request)
-
-        data = [_dispute_to_dict(d) for d in page]
-        return paginator.get_paginated_response(data)
+        serializer = DisputeSerializer(disputes, many=True)
+        return Response({'status': 'success', 'results': serializer.data})
 
 
 # ─────────────────────────────────────────────
-# Dispute Resolve (admin only)
+# PATCH /api/disputes/<id>/resolve/   (ادمین فقط)
 # ─────────────────────────────────────────────
 
 class DisputeResolveView(APIView):
-    """
-    PATCH /api/disputes/<id>/resolve/
-
-    Body:
-      {
-        "resolution": "توضیح تصمیم ادمین",
-        "penalty_amount": 250000   ← اختیاری؛ اگر صفر یا نبود، ضمانت برمی‌گردد
-      }
-
-    منطق مالی:
-    - اگر penalty_amount > 0:
-        → از کیف پول قرض‌گیرنده کسر می‌شود و به صاحب ابزار می‌رسد
-        → بقیه ضمانت (deposit_held - penalty_amount) به قرض‌گیرنده برمی‌گردد
-    - اگر penalty_amount == 0 یا نبود:
-        → کل ضمانت به قرض‌گیرنده برمی‌گردد (هیچ آسیبی ثابت نشد)
-    """
-    permission_classes = [IsAdminUser]
+    """حل شکایت و تعیین جریمه — فقط ادمین"""
+    permission_classes = [IsAuthenticated]
 
     def patch(self, request, dispute_id):
+        if not request.user.is_admin:
+            return Response(
+                {'status': 'error', 'message': 'Admin access required.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         try:
-            dispute = Dispute.objects.select_related(
-                'rental', 'rental__tool', 'rental__borrower',
-                'rental__tool__owner',
-            ).get(pk=dispute_id)
+            dispute = (
+                Dispute.objects
+                .select_related('rental', 'rental__tool', 'rental__tool__owner', 'rental__borrower')
+                .get(pk=dispute_id)
+            )
         except Dispute.DoesNotExist:
             return Response(
                 {'status': 'error', 'message': 'Dispute not found.'},
@@ -109,144 +166,91 @@ class DisputeResolveView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        resolution     = request.data.get('resolution', '').strip()
-        penalty_raw    = request.data.get('penalty_amount', 0)
-
-        if not resolution:
+        serializer = DisputeResolveSerializer(data=request.data)
+        if not serializer.is_valid():
             return Response(
-                {'status': 'error', 'message': 'resolution field is required.'},
+                {'status': 'error', 'message': serializer.errors},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        try:
-            penalty_amount = int(penalty_raw)
-            if penalty_amount < 0:
-                raise ValueError
-        except (ValueError, TypeError):
-            return Response(
-                {'status': 'error', 'message': 'penalty_amount must be a non-negative integer.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        data           = serializer.validated_data
+        penalty_amount = data.get('penalty_amount', 0)
+        rental         = dispute.rental
+        deposit        = rental.deposit_held
 
-        rental   = dispute.rental
-        borrower = rental.borrower
-        owner    = rental.tool.owner
-        deposit  = rental.deposit_held
-
-        # جریمه نمی‌تواند از ضمانت بیشتر باشد
+        # جریمه نمی‌تواند از مبلغ ضمانت بیشتر باشد
         if penalty_amount > deposit:
             return Response(
                 {
                     'status': 'error',
-                    'message': f'penalty_amount ({penalty_amount}) cannot exceed '
-                               f'the deposit held ({deposit}).',
+                    'message': (
+                        f'Penalty ({penalty_amount}) cannot exceed '
+                        f'deposit amount ({deposit}).'
+                    ),
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        refund_to_borrower = deposit - penalty_amount
+
         with transaction.atomic():
-            # قفل کردن رکوردهای کاربران
-            borrower_locked = (
-                borrower.__class__._default_manager
+            # قفل روی borrower و owner برای جلوگیری از race condition
+            borrower = (
+                rental.borrower.__class__._default_manager
                 .select_for_update()
-                .get(pk=borrower.pk)
+                .get(pk=rental.borrower_id)
             )
-            owner_locked = (
-                owner.__class__._default_manager
+            owner = (
+                rental.tool.owner.__class__._default_manager
                 .select_for_update()
-                .get(pk=owner.pk)
+                .get(pk=rental.tool.owner_id)
             )
 
-            if penalty_amount > 0:
-                # ۱. کسر جریمه از ضمانت → به صاحب ابزار
-                owner_locked.wallet_balance += penalty_amount
-                owner_locked.save(update_fields=['wallet_balance'])
-
-                Transaction.objects.create(
-                    rental    = rental,
-                    from_user = None,   # از escrow
-                    to_user   = owner_locked,
-                    amount    = penalty_amount,
-                    type      = 'deposit_penalty',
-                    note      = f'Penalty awarded to owner. Dispute #{dispute.id}. '
-                                f'Resolution: {resolution}',
-                )
-
-                # ۲. باقی‌مانده ضمانت → به قرض‌گیرنده
-                remainder = deposit - penalty_amount
-                if remainder > 0:
-                    borrower_locked.wallet_balance += remainder
-                    borrower_locked.save(update_fields=['wallet_balance'])
-
-                    Transaction.objects.create(
-                        rental    = rental,
-                        from_user = None,
-                        to_user   = borrower_locked,
-                        amount    = remainder,
-                        type      = 'deposit_return',
-                        note      = f'Partial deposit returned after dispute. '
-                                    f'Dispute #{dispute.id}.',
-                    )
-            else:
-                # هیچ جریمه‌ای نبود → کل ضمانت به قرض‌گیرنده برمی‌گردد
-                borrower_locked.wallet_balance += deposit
-                borrower_locked.save(update_fields=['wallet_balance'])
+            # ۱. برگشت مابقی ضمانت به borrower
+            if refund_to_borrower > 0:
+                borrower.wallet_balance += refund_to_borrower
+                borrower.save(update_fields=['wallet_balance'])
 
                 Transaction.objects.create(
                     rental    = rental,
                     from_user = None,
-                    to_user   = borrower_locked,
-                    amount    = deposit,
+                    to_user   = borrower,
+                    amount    = refund_to_borrower,
                     type      = 'deposit_return',
-                    note      = f'Full deposit returned after dispute resolved in borrower\'s favour. '
-                                f'Dispute #{dispute.id}.',
+                    note      = (
+                        f'Partial deposit refund after dispute #{dispute.id} resolved. '
+                        f'Penalty: {penalty_amount}'
+                    ),
                 )
 
-            # ۳. آپدیت Dispute
-            dispute.status      = 'resolved'
-            dispute.resolution  = resolution
-            dispute.admin       = request.user
-            dispute.resolved_at = timezone.now()
-            dispute.save()
+            # ۲. انتقال جریمه به صاحب ابزار
+            if penalty_amount > 0:
+                owner.wallet_balance += penalty_amount
+                owner.save(update_fields=['wallet_balance'])
 
-            # ۴. وضعیت رزرو → returned (اختلاف حل شد)
-            rental.status = 'returned'
+                Transaction.objects.create(
+                    rental    = rental,
+                    from_user = None,
+                    to_user   = owner,
+                    amount    = penalty_amount,
+                    type      = 'deposit_penalty',
+                    note      = f'Penalty paid to owner from dispute #{dispute.id}.',
+                )
+
+            # ۳. آپدیت وضعیت رزرو به disputed
+            rental.status = 'disputed'
             rental.save(update_fields=['status', 'updated_at'])
 
-        return Response({
-            'status': 'success',
-            'data'  : _dispute_to_dict(dispute),
-        })
+            # ۴. resolve کردن شکایت
+            dispute.status         = 'resolved'
+            dispute.resolution     = data['resolution']
+            dispute.penalty_amount = penalty_amount
+            dispute.admin          = request.user
+            dispute.resolved_at    = timezone.now()
+            dispute.save(update_fields=[
+                'status', 'resolution', 'penalty_amount',
+                'admin', 'resolved_at',
+            ])
 
+        return Response({'status': 'success', 'data': DisputeSerializer(dispute).data})
 
-# ─────────────────────────────────────────────
-# Helper
-# ─────────────────────────────────────────────
-
-def _dispute_to_dict(dispute):
-    """تبدیل شیء Dispute به dict برای response."""
-    return {
-        'id'         : dispute.id,
-        'rental'     : {
-            'id'    : dispute.rental.id,
-            'tool'  : dispute.rental.tool.name,
-            'status': dispute.rental.status,
-        },
-        'raised_by'  : {
-            'id'       : dispute.raised_by.id,
-            'full_name': dispute.raised_by.full_name,
-            'phone'    : dispute.raised_by.phone,
-        },
-        'reason'     : dispute.reason,
-        'status'     : dispute.status,
-        'resolution' : dispute.resolution,
-        'admin'      : (
-            {
-                'id'       : dispute.admin.id,
-                'full_name': dispute.admin.full_name,
-            }
-            if dispute.admin else None
-        ),
-        'resolved_at': dispute.resolved_at,
-        'created_at' : dispute.created_at,
-    }
