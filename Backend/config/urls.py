@@ -1,31 +1,50 @@
 """
-URL configuration for config project.
+config/urls.py
+--------------
+Root URL configuration for the HamAbzar project.
 
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/6.0/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
+API structure:
+  /api/auth/           → accounts (OTP login, JWT, me, profile)
+  /api/tools/          → tools CRUD + geo-search + availability + images
+  /api/categories/     → reference: tool categories
+  /api/cities/         → reference: cities
+  /api/rentals/        → rental lifecycle + chat + reviews + disputes
+  /api/disputes/       → admin dispute management
+  /api/users/          → public user profiles + reviews
 """
+
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
+from tools.urls import reference_urlpatterns
+from accounts.urls import user_urlpatterns
+
 urlpatterns = [
+    # ── Django admin ──────────────────────────────────────
     path('admin/', admin.site.urls),
-    path('api/auth/',      include('accounts.urls')),
-    path('api/tools/',     include('tools.urls')),
-    path('api/rentals/',   include('rentals.urls')),
-    path('api/disputes/',  include('disputes.urls')),
+
+    # ── Auth (OTP login, JWT refresh, me, update profile) ─
+    path('api/auth/', include('accounts.urls')),
+
+    # ── Tools (CRUD + geo + availability + images) ─────────
+    path('api/tools/', include('tools.urls')),
+
+    # ── Reference data (categories, cities) ───────────────
+    # These live in tools/urls.py as reference_urlpatterns
+    # but are mounted at /api/ level for clean URLs
+    path('api/', include(reference_urlpatterns)),
+
+    # ── Rentals (create, transitions, review, chat, dispute)
+    path('api/rentals/', include('rentals.urls')),
+
+    # ── Disputes (admin: list + resolve) ──────────────────
+    path('api/disputes/', include('disputes.urls')),
+
+    # ── Public user profiles ───────────────────────────────
+    path('api/users/', include(user_urlpatterns)),
 ]
 
-# serve media (dev)
+# ── Serve media files in development ──────────────────────
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

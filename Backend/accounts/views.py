@@ -246,5 +246,54 @@ class MeView(APIView):
         serializer.save()
         return Response({
             'status': 'success',
-            'data':   UserSerializer(request.user).data
+            'data': UserSerializer(request.user).data
+        })
+
+class UserReviewsView(APIView):
+    """
+    GET /api/users/<id>/reviews/
+    Public endpoint — returns all reviews received by a user.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request, user_id):
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response(
+                {'status': 'error', 'message': 'User not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        from rentals.models import Review
+        reviews = Review.objects.filter(
+            reviewed=user
+        ).select_related('reviewer', 'rental').order_by('-created_at')
+
+        data = [
+            {
+                'id'        : r.id,
+                'rental_id' : r.rental_id,
+                'reviewer'  : {
+                    'id'       : r.reviewer.id,
+                    'full_name': r.reviewer.full_name,
+                },
+                'rating'    : r.rating,
+                'comment'   : r.comment,
+                'created_at': r.created_at,
+            }
+            for r in reviews
+        ]
+
+        return Response({
+            'status': 'success',
+            'data'  : {
+                'user'   : {
+                    'id'          : user.id,
+                    'full_name'   : user.full_name,
+                    'rating'      : user.rating,
+                    'rating_count': user.rating_count,
+                },
+                'reviews': data,
+            },
         })
