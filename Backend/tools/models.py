@@ -29,6 +29,7 @@ class Tool(models.Model):
     is_available   = models.BooleanField(default=True)
     created_at     = models.DateTimeField(auto_now_add=True)
 
+
     def __str__(self):
         return f"{self.name} - {self.owner.phone}"
 
@@ -37,6 +38,7 @@ class ToolImage(models.Model):
     tool       = models.ForeignKey(Tool, on_delete=models.CASCADE, related_name='images')
     image      = models.ImageField(upload_to='tools/')
     sort_order = models.IntegerField(default=0)
+    is_primary = models.BooleanField(default=False)
 
     class Meta:
         ordering = ['sort_order']

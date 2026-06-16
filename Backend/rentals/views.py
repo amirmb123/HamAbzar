@@ -1,6 +1,8 @@
-from django.shortcuts import render
-
 """
+rentals/views.py
+----------------
+All views for the Rentals app.
+
 Business rules enforced here:
   - Only authenticated users can create rentals
   - A user cannot rent their own tool

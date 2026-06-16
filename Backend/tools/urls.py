@@ -59,3 +59,5 @@ reference_urlpatterns = [
     path('categories/', views.CategoryListView.as_view(), name='category-list'),
     path('cities/',     views.CityListView.as_view(),     name='city-list'),
 ]
+
+urlpatterns += reference_urlpatterns

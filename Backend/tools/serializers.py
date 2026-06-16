@@ -84,7 +84,7 @@ class ToolListSerializer(serializers.ModelSerializer):
             'owner',
             'thumbnail',
             'distance_km',
-            'rating',
+            # 'rating',
         ]
 
     def get_thumbnail(self, obj):
@@ -131,7 +131,7 @@ class ToolDetailSerializer(serializers.ModelSerializer):
             'is_available',
             'owner',
             'images',
-            'rating',
+            # 'rating',
             'created_at',
         ]
 

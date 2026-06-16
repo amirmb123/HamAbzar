@@ -3,17 +3,17 @@ rentals/serializers.py
 ----------------------
 Serializers for Rental, Review, and Message models.
 
-Design notes:
-- RentalListSerializer  : compact view for list endpoints (my rentals, my-tools)
-- RentalDetailSerializer: full view with nested tool + borrower info
-- RentalCreateSerializer: validates create input (tool_id, dates, conflict check)
-- ReviewCreateSerializer: validates review input (only after status=returned)
-- MessageSerializer     : for chat messages inside a rental
+Merged best-of-both version:
+- RentalListSerializer  : compact view for list endpoints
+- RentalDetailSerializer: full view WITH owner field (from incoming)
+- RentalCreateSerializer: validates dates including past-date check (from incoming)
+                          + correct overlap logic (from current)
+- ReviewCreateSerializer: full security — self-review + party check + duplicate (from incoming)
+- MessageSerializer     : full sender object with avatar (from current)
 """
 
 from rest_framework import serializers
-from django.db.models import Q
-
+from django.utils import timezone
 from .models import Rental, Review
 from chat.models import Message
 
@@ -22,21 +22,19 @@ from chat.models import Message
 # Nested helpers
 # ─────────────────────────────────────────────
 
+class SimpleToolSerializer(serializers.Serializer):
+    id             = serializers.IntegerField()
+    name           = serializers.CharField()
+    daily_price    = serializers.IntegerField()
+    deposit_amount = serializers.IntegerField()
+
+
 class SimpleUserSerializer(serializers.Serializer):
-    """Minimal user snapshot — avoids circular import with accounts."""
     id        = serializers.IntegerField()
     full_name = serializers.CharField()
     phone     = serializers.CharField()
     rating    = serializers.DecimalField(max_digits=3, decimal_places=1)
-    avatar    = serializers.ImageField(allow_null=True)
-
-
-class SimpleToolSerializer(serializers.Serializer):
-    """Minimal tool snapshot for nested use inside rental responses."""
-    id    = serializers.IntegerField()
-    name  = serializers.CharField()
-    daily_price    = serializers.IntegerField()
-    deposit_amount = serializers.IntegerField()
+    avatar    = serializers.ImageField(allow_null=True)   # ✅ از current
 
 
 # ─────────────────────────────────────────────
@@ -44,26 +42,16 @@ class SimpleToolSerializer(serializers.Serializer):
 # ─────────────────────────────────────────────
 
 class RentalListSerializer(serializers.ModelSerializer):
-    """
-    Compact representation used in:
-      GET /api/rentals/my/
-      GET /api/rentals/my-tools/
-    """
     tool     = SimpleToolSerializer(read_only=True)
     borrower = SimpleUserSerializer(read_only=True)
 
     class Meta:
         model  = Rental
         fields = [
-            'id',
-            'tool',
-            'borrower',
-            'start_date',
-            'end_date',
-            'total_price',
-            'deposit_held',
-            'status',
-            'created_at',
+            'id', 'tool', 'borrower',
+            'start_date', 'end_date',
+            'total_price', 'deposit_held',
+            'status', 'created_at',
         ]
 
 
@@ -72,33 +60,22 @@ class RentalListSerializer(serializers.ModelSerializer):
 # ─────────────────────────────────────────────
 
 class RentalDetailSerializer(serializers.ModelSerializer):
-    """
-    Full representation used in:
-      GET  /api/rentals/<id>/
-      POST /api/rentals/               (response after create)
-      POST /api/rentals/<id>/confirm/  (response after transition)
-      POST /api/rentals/<id>/handover/ (response after transition)
-      POST /api/rentals/<id>/return/   (response after transition)
-      POST /api/rentals/<id>/cancel/   (response after transition)
-    """
     tool     = SimpleToolSerializer(read_only=True)
     borrower = SimpleUserSerializer(read_only=True)
+    owner    = serializers.SerializerMethodField()   # ✅ از incoming
 
     class Meta:
         model  = Rental
         fields = [
-            'id',
-            'tool',
-            'borrower',
-            'start_date',
-            'end_date',
-            'total_price',
-            'deposit_held',
-            'status',
-            'admin_note',
-            'created_at',
-            'updated_at',
+            'id', 'tool', 'borrower', 'owner',      # ✅ owner اضافه شد
+            'start_date', 'end_date',
+            'total_price', 'deposit_held',
+            'status', 'admin_note',
+            'created_at', 'updated_at',
         ]
+
+    def get_owner(self, obj):
+        return SimpleUserSerializer(obj.tool.owner).data
 
 
 # ─────────────────────────────────────────────
@@ -106,60 +83,48 @@ class RentalDetailSerializer(serializers.ModelSerializer):
 # ─────────────────────────────────────────────
 
 class RentalCreateSerializer(serializers.Serializer):
-    """
-    Validates the body of POST /api/rentals/
-
-    Business rules checked here:
-    1. end_date must be after start_date (at least 1 day)
-    2. Tool must exist
-    3. No date overlap with existing active/pending/confirmed rentals (409)
-    """
     tool_id    = serializers.IntegerField()
     start_date = serializers.DateField()
     end_date   = serializers.DateField()
 
-    def validate(self, attrs):
+    def validate_tool_id(self, value):
         from tools.models import Tool
-        import datetime
-
-        tool_id    = attrs['tool_id']
-        start_date = attrs['start_date']
-        end_date   = attrs['end_date']
-
-        # ۱. تاریخ پایان باید بعد از شروع باشد
-        if end_date <= start_date:
-            raise serializers.ValidationError(
-                {'date_range': 'end_date must be after start_date.'}
-            )
-
-        # حداقل یک روز اجاره
-        if (end_date - start_date).days < 1:
-            raise serializers.ValidationError(
-                {'date_range': 'Minimum rental duration is 1 day.'}
-            )
-
-        # ۲. ابزار باید وجود داشته باشد
         try:
-            tool = Tool.objects.get(pk=tool_id)
+            tool = Tool.objects.get(pk=value)
         except Tool.DoesNotExist:
+            raise serializers.ValidationError("Tool not found.")
+        if not tool.is_available:
+            raise serializers.ValidationError("This tool is not available for rent.")
+        return value
+
+    def validate(self, attrs):
+        start   = attrs['start_date']
+        end     = attrs['end_date']
+        today   = timezone.now().date()
+        tool_id = attrs['tool_id']
+
+        # ✅ از incoming — بررسی تاریخ گذشته
+        if start < today:
             raise serializers.ValidationError(
-                {'tool_id': 'Tool not found.'}
+                {"start_date": "Start date cannot be in the past."}
             )
 
-        # ۳. بررسی تداخل تاریخ با رزروهای فعال
-        BLOCKING_STATUSES = ('pending', 'confirmed', 'active')
+        # تاریخ پایان باید بعد از شروع باشد
+        if end <= start:
+            raise serializers.ValidationError(
+                {"end_date": "End date must be after start date."}
+            )
+
+        # ✅ از current — منطق تداخل صحیح (strict overlap)
         conflict = Rental.objects.filter(
             tool_id=tool_id,
-            status__in=BLOCKING_STATUSES,
-        ).filter(
-            # هر رزروی که با بازه درخواستی تداخل دارد
-            start_date__lt=end_date,
-            end_date__gt=start_date,
+            status__in=['pending', 'confirmed', 'active'],
+            start_date__lt=end,
+            end_date__gt=start,
         ).exists()
-
         if conflict:
             raise serializers.ValidationError(
-                {'date_conflict': 'این ابزار در تاریخ انتخابی رزرو است.'}
+                {"date_conflict": "این ابزار در تاریخ انتخابی رزرو است."}
             )
 
         return attrs
@@ -170,15 +135,6 @@ class RentalCreateSerializer(serializers.Serializer):
 # ─────────────────────────────────────────────
 
 class ReviewCreateSerializer(serializers.Serializer):
-    """
-    Validates POST /api/rentals/<id>/review/
-
-    Business rules:
-    - Rental must have status = 'returned'
-    - Reviewer cannot review themselves
-    - reviewed_id must be the other party (owner or borrower)
-    - Each (rental, reviewer) pair is unique
-    """
     reviewed_id = serializers.IntegerField()
     rating      = serializers.IntegerField(min_value=1, max_value=5)
     comment     = serializers.CharField(required=False, allow_blank=True, default='')
@@ -188,33 +144,37 @@ class ReviewCreateSerializer(serializers.Serializer):
         request = self.context['request']
         user    = request.user
 
-        # ۱. فقط بعد از returned می‌شود امتیاز داد
+        # ۱. فقط بعد از returned
         if rental.status != 'returned':
             raise serializers.ValidationError(
-                'Reviews can only be submitted after the rental is completed (returned).'
+                "Reviews can only be submitted after the tool is returned."
             )
 
-        # ۲. نمی‌شود به خودت امتیاز داد
+        # ✅ از incoming — تعیین طرف مقابل بر اساس نقش
+        is_borrower = user.id == rental.borrower_id
+        is_owner    = user.id == rental.tool.owner_id
+
+        if is_borrower:
+            expected_reviewed_id = rental.tool.owner_id
+        elif is_owner:
+            expected_reviewed_id = rental.borrower_id
+        else:
+            raise serializers.ValidationError("Access denied.")
+
+        # ✅ از incoming — باید دقیقاً طرف مقابل باشد
+        if attrs['reviewed_id'] != expected_reviewed_id:
+            raise serializers.ValidationError(
+                "You can only review the other party of this rental."
+            )
+
+        # ۲. نمیشه به خودت امتیاز داد (لایه دفاعی اضافه)
         if attrs['reviewed_id'] == user.id:
-            raise serializers.ValidationError(
-                'You cannot review yourself.'
-            )
+            raise serializers.ValidationError("You cannot review yourself.")
 
-        # ۳. reviewed باید طرف مقابل باشد (صاحب ابزار یا قرض‌گیرنده)
-        valid_reviewed_ids = {rental.borrower_id, rental.tool.owner_id}
-        if attrs['reviewed_id'] not in valid_reviewed_ids:
+        # ۳. امتیاز تکراری
+        if Review.objects.filter(rental=rental, reviewer=user).exists():
             raise serializers.ValidationError(
-                'You can only review the other party of this rental.'
-            )
-
-        # ۴. هر کاربر فقط یک بار می‌تواند برای این رزرو امتیاز دهد
-        already_reviewed = Review.objects.filter(
-            rental=rental,
-            reviewer=user,
-        ).exists()
-        if already_reviewed:
-            raise serializers.ValidationError(
-                'You have already submitted a review for this rental.'
+                "You have already submitted a review for this rental."
             )
 
         return attrs
@@ -225,19 +185,9 @@ class ReviewCreateSerializer(serializers.Serializer):
 # ─────────────────────────────────────────────
 
 class MessageSerializer(serializers.ModelSerializer):
-    """
-    Used in:
-      GET  /api/rentals/<id>/messages/
-      POST /api/rentals/<id>/messages/
-    """
-    sender = SimpleUserSerializer(read_only=True)
+    sender = SimpleUserSerializer(read_only=True)   # ✅ از current — کامل‌تر از sender_name
 
     class Meta:
         model  = Message
-        fields = [
-            'id',
-            'sender',
-            'content',
-            'is_read',
-            'created_at',
-        ]
+        fields = ['id', 'sender', 'content', 'is_read', 'created_at']
+        read_only_fields = ['id', 'sender', 'is_read', 'created_at']
