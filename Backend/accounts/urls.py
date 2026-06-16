@@ -19,8 +19,19 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from . import views
 
 urlpatterns = [
-    path('request-otp/', views.RequestOTPView.as_view(), name='request-otp'),
-    path('verify-otp/',  views.VerifyOTPView.as_view(),  name='verify-otp'),
-    path('refresh/',     TokenRefreshView.as_view(),     name='token-refresh'),
-    path('me/',          views.MeView.as_view(),         name='me'),
+    # OTP flow
+    path('request-otp/', views.RequestOTPView.as_view(),   name='request-otp'),
+    path('verify-otp/',  views.VerifyOTPView.as_view(),    name='verify-otp'),
+
+    # Registration (after OTP verification)
+    path('register/',    views.RegisterView.as_view(),     name='register'),
+
+    # Login with username/password
+    path('login/',       views.LoginPasswordView.as_view(), name='login-password'),
+
+    # Token
+    path('refresh/',     TokenRefreshView.as_view(),        name='token-refresh'),
+
+    # Profile
+    path('me/',          views.MeView.as_view(),            name='me'),
 ]

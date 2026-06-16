@@ -133,7 +133,7 @@ class ToolListCreateView(APIView):
             for tool in qs:
                 if tool.latitude is None or tool.longitude is None:
                     continue
-                d = haversine(user_lat, user_lng, tool.latitude, tool.longitude)
+                d = haversine(user_lat, user_lng, float(tool.latitude), float(tool.longitude))
                 if d <= radius:
                     distances[tool.id] = round(d, 2)
                     filtered.append(tool)

@@ -1,4 +1,11 @@
+<<<<<<< HEAD
 from django.shortcuts import render
+=======
+"""
+rentals/views.py
+----------------
+All views for the Rentals app.
+>>>>>>> 5a61c4597c1e77120ed305aa872362205deeb194
 
 Business rules enforced here:
   - Only authenticated users can create rentals
