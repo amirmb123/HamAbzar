@@ -1,30 +1,22 @@
 """
-disputes/urls.py
-----------------
-URL patterns for the Disputes app.
+URL configuration for config project.
 
-Mounted at /api/disputes/ in config/urls.py
-
-Full URL map:
-  GET   /api/disputes/              → list all disputes (admin only)
-  PATCH /api/disputes/<id>/resolve/ → resolve dispute + financial ruling (admin only)
+The `urlpatterns` list routes URLs to views. For more information please see:
+    https://docs.djangoproject.com/en/6.0/topics/http/urls/
+Examples:
+Function views
+    1. Add an import:  from my_app import views
+    2. Add a URL to urlpatterns:  path('', views.home, name='home')
+Class-based views
+    1. Add an import:  from other_app.views import Home
+    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
+Including another URLconf
+    1. Import the include() function: from django.urls import include, path
+    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-
+from django.contrib import admin
 from django.urls import path
-from . import views
 
 urlpatterns = [
-    # ── Admin: list all disputes ──────────────
-    path(
-        '',
-        views.DisputeListView.as_view(),
-        name='dispute-list',
-    ),
-
-    # ── Admin: resolve a dispute ──────────────
-    path(
-        '<int:dispute_id>/resolve/',
-        views.DisputeResolveView.as_view(),
-        name='dispute-resolve',
-    ),
+    # path('admin/', admin.site.urls),
 ]
