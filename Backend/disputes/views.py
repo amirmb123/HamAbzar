@@ -192,6 +192,9 @@ class DisputeResolveView(APIView):
             )
 
         refund_to_borrower = deposit - penalty_amount
+        # اگر رزرو از قبل 'returned' بوده، یعنی از RentalReturnView رد شده و
+        # total_price از قبل به owner پرداخت شده — دوباره پرداخت نشود.
+        rental_already_returned = (rental.status == 'returned')
 
         with transaction.atomic():
             # قفل روی borrower و owner برای جلوگیری از race condition
@@ -237,11 +240,26 @@ class DisputeResolveView(APIView):
                     note      = f'Penalty paid to owner from dispute #{dispute.id}.',
                 )
 
-            # ۳. آپدیت وضعیت رزرو به disputed
+            # ۳. پرداخت کامل اجاره (total_price) به صاحب ابزار — مستقل از penalty
+            #    فقط اگر قبلاً (در فلوی عادی return) پرداخت نشده باشد.
+            if not rental_already_returned and rental.total_price > 0:
+                owner.wallet_balance += rental.total_price
+                owner.save(update_fields=['wallet_balance'])
+
+                Transaction.objects.create(
+                    rental    = rental,
+                    from_user = None,
+                    to_user   = owner,
+                    amount    = rental.total_price,
+                    type      = 'rental_payment',
+                    note      = f'Rental income for "{rental.tool.name}" after dispute #{dispute.id} resolved.',
+                )
+
+            # ۴. آپدیت وضعیت رزرو به disputed
             rental.status = 'disputed'
             rental.save(update_fields=['status', 'updated_at'])
 
-            # ۴. resolve کردن شکایت
+            # ۵. resolve کردن شکایت
             dispute.status         = 'resolved'
             dispute.resolution     = data['resolution']
             dispute.penalty_amount = penalty_amount
@@ -253,4 +271,3 @@ class DisputeResolveView(APIView):
             ])
 
         return Response({'status': 'success', 'data': DisputeSerializer(dispute).data})
-
