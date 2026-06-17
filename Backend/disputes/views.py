@@ -1,6 +1,5 @@
 from django.shortcuts import render
 
-<<<<<<< HEAD
 """
 Dispute Views — همابزار
 ────────────────────────────────────────────────
@@ -255,6 +254,3 @@ class DisputeResolveView(APIView):
 
         return Response({'status': 'success', 'data': DisputeSerializer(dispute).data})
 
-=======
-# Create your views here.
->>>>>>> 71170af0c541d91e9e12860b8053a09839c6b858

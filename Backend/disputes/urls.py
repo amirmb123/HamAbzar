@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-=======
 """
 URL configuration for config project.
 
@@ -17,11 +15,9 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
->>>>>>> 71170af0c541d91e9e12860b8053a09839c6b858
 from django.urls import path
 
 urlpatterns = [
-<<<<<<< HEAD
     # GET  /api/disputes/               — لیست همه شکایت‌ها (ادمین)
     path('', views.DisputeListView.as_view(), name='dispute-list'),
 
@@ -31,7 +27,4 @@ urlpatterns = [
         views.DisputeResolveView.as_view(),
         name='dispute-resolve',
     ),
-=======
-    # path('admin/', admin.site.urls),
->>>>>>> 71170af0c541d91e9e12860b8053a09839c6b858
 ]
