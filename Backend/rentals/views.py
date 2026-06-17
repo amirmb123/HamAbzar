@@ -541,4 +541,8 @@ class MessageListCreateView(APIView):
         return Response(
             {'status': 'success', 'data': MessageSerializer(message).data},
             status=status.HTTP_201_CREATED,
+<<<<<<< HEAD
         )
+=======
+        )
+>>>>>>> 71170af0c541d91e9e12860b8053a09839c6b858

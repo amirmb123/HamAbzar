@@ -246,5 +246,9 @@ class MeView(APIView):
         serializer.save()
         return Response({
             'status': 'success',
+<<<<<<< HEAD
             'data': UserSerializer(request.user).data
+=======
+            'data':   UserSerializer(request.user).data
+>>>>>>> 71170af0c541d91e9e12860b8053a09839c6b858
         })
