@@ -21,7 +21,6 @@ from disputes.views import DisputeCreateView
 
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
     # ── Dispute ──────────────────────────────
     path('<int:rental_id>/dispute/', DisputeCreateView.as_view(), name='dispute-create'),
     # ── Collection ───────────────────────────

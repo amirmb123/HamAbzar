@@ -191,10 +191,30 @@ class DisputeResolveView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        refund_to_borrower = deposit - penalty_amount
-        # اگر رزرو از قبل 'returned' بوده، یعنی از RentalReturnView رد شده و
-        # total_price از قبل به owner پرداخت شده — دوباره پرداخت نشود.
+        # دو حالت کاملاً متفاوت داریم:
+        #   - rental.status == 'active'   → پول هنوز در escrow است، چیزی پرداخت/برگشت نشده.
+        #   - rental.status == 'returned' → deposit کامل به borrower برگشته و total_price
+        #                                    کامل به owner پرداخت شده (در RentalReturnView).
+        #                                    اینجا دیگر "رهاسازی سپرده" بی‌معنی است؛ penalty باید
+        #                                    مستقیماً از wallet_balance خودِ borrower کسر شود.
         rental_already_returned = (rental.status == 'returned')
+
+        if rental_already_returned and penalty_amount > 0:
+            # موجودی کافی برای کسر جریمه را داشته باشد، وگرنه resolve را رد می‌کنیم
+            borrower_balance_check = (
+                rental.borrower.__class__._default_manager.get(pk=rental.borrower_id)
+            )
+            if borrower_balance_check.wallet_balance < penalty_amount:
+                return Response(
+                    {
+                        'status': 'error',
+                        'message': (
+                            f'Borrower wallet balance ({borrower_balance_check.wallet_balance}) '
+                            f'is insufficient to cover the penalty ({penalty_amount}).'
+                        ),
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         with transaction.atomic():
             # قفل روی borrower و owner برای جلوگیری از race condition
@@ -209,51 +229,78 @@ class DisputeResolveView(APIView):
                 .get(pk=rental.tool.owner_id)
             )
 
-            # ۱. برگشت مابقی ضمانت به borrower
-            if refund_to_borrower > 0:
-                borrower.wallet_balance += refund_to_borrower
-                borrower.save(update_fields=['wallet_balance'])
+            if rental_already_returned:
+                # ── حالت ۱: رزرو از قبل return شده — پول‌ها نهایی هستند ──
+                # penalty باید مستقیماً از کیف‌پول borrower کسر و به owner داده شود.
+                if penalty_amount > 0:
+                    borrower.wallet_balance -= penalty_amount
+                    borrower.save(update_fields=['wallet_balance'])
 
-                Transaction.objects.create(
-                    rental    = rental,
-                    from_user = None,
-                    to_user   = borrower,
-                    amount    = refund_to_borrower,
-                    type      = 'deposit_return',
-                    note      = (
-                        f'Partial deposit refund after dispute #{dispute.id} resolved. '
-                        f'Penalty: {penalty_amount}'
-                    ),
-                )
+                    owner.wallet_balance += penalty_amount
+                    owner.save(update_fields=['wallet_balance'])
 
-            # ۲. انتقال جریمه به صاحب ابزار
-            if penalty_amount > 0:
-                owner.wallet_balance += penalty_amount
-                owner.save(update_fields=['wallet_balance'])
+                    Transaction.objects.create(
+                        rental    = rental,
+                        from_user = borrower,
+                        to_user   = owner,
+                        amount    = penalty_amount,
+                        type      = 'deposit_penalty',
+                        note      = (
+                            f'Post-return penalty charged to borrower and paid to owner '
+                            f'from dispute #{dispute.id}.'
+                        ),
+                    )
+                # توجه: deposit_held و total_price قبلاً در RentalReturnView تسویه شده‌اند،
+                # هیچ پرداخت دیگری لازم نیست.
 
-                Transaction.objects.create(
-                    rental    = rental,
-                    from_user = None,
-                    to_user   = owner,
-                    amount    = penalty_amount,
-                    type      = 'deposit_penalty',
-                    note      = f'Penalty paid to owner from dispute #{dispute.id}.',
-                )
+            else:
+                # ── حالت ۲: رزرو هنوز active است — پول هنوز در escrow است ──
+                refund_to_borrower = deposit - penalty_amount
 
-            # ۳. پرداخت کامل اجاره (total_price) به صاحب ابزار — مستقل از penalty
-            #    فقط اگر قبلاً (در فلوی عادی return) پرداخت نشده باشد.
-            if not rental_already_returned and rental.total_price > 0:
-                owner.wallet_balance += rental.total_price
-                owner.save(update_fields=['wallet_balance'])
+                # ۱. برگشت مابقی ضمانت به borrower
+                if refund_to_borrower > 0:
+                    borrower.wallet_balance += refund_to_borrower
+                    borrower.save(update_fields=['wallet_balance'])
 
-                Transaction.objects.create(
-                    rental    = rental,
-                    from_user = None,
-                    to_user   = owner,
-                    amount    = rental.total_price,
-                    type      = 'rental_payment',
-                    note      = f'Rental income for "{rental.tool.name}" after dispute #{dispute.id} resolved.',
-                )
+                    Transaction.objects.create(
+                        rental    = rental,
+                        from_user = None,
+                        to_user   = borrower,
+                        amount    = refund_to_borrower,
+                        type      = 'deposit_return',
+                        note      = (
+                            f'Partial deposit refund after dispute #{dispute.id} resolved. '
+                            f'Penalty: {penalty_amount}'
+                        ),
+                    )
+
+                # ۲. انتقال جریمه به صاحب ابزار
+                if penalty_amount > 0:
+                    owner.wallet_balance += penalty_amount
+                    owner.save(update_fields=['wallet_balance'])
+
+                    Transaction.objects.create(
+                        rental    = rental,
+                        from_user = None,
+                        to_user   = owner,
+                        amount    = penalty_amount,
+                        type      = 'deposit_penalty',
+                        note      = f'Penalty paid to owner from dispute #{dispute.id}.',
+                    )
+
+                # ۳. پرداخت کامل اجاره (total_price) به صاحب ابزار — مستقل از penalty
+                if rental.total_price > 0:
+                    owner.wallet_balance += rental.total_price
+                    owner.save(update_fields=['wallet_balance'])
+
+                    Transaction.objects.create(
+                        rental    = rental,
+                        from_user = None,
+                        to_user   = owner,
+                        amount    = rental.total_price,
+                        type      = 'rental_payment',
+                        note      = f'Rental income for "{rental.tool.name}" after dispute #{dispute.id} resolved.',
+                    )
 
             # ۴. آپدیت وضعیت رزرو به disputed
             rental.status = 'disputed'
