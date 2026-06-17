@@ -8,13 +8,13 @@ class DisputeCreateSerializer(serializers.Serializer):
 
 
 class DisputeResolveSerializer(serializers.Serializer):
-    """PATCH /api/disputes/<id>/resolve/ — ادمین فقط"""
+    """PATCH /api/disputes/<id>/resolve/ — just admin"""
     resolution     = serializers.CharField(min_length=5, max_length=2000)
     penalty_amount = serializers.IntegerField(min_value=0, required=False, default=0)
 
 
 class DisputeSerializer(serializers.ModelSerializer):
-    """خروجی کامل یک dispute"""
+    """Full output of a dispute"""
     rental_id  = serializers.IntegerField(source='rental.id', read_only=True)
     raised_by  = serializers.SerializerMethodField()
     admin      = serializers.SerializerMethodField()

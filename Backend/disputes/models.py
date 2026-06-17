@@ -19,7 +19,6 @@ class Dispute(models.Model):
         related_name='resolved_disputes',
     )
     resolution     = models.TextField(blank=True)
-    # مقدار جریمه‌ای که ادمین کسر می‌کند (از ضمانت)
     penalty_amount = models.PositiveIntegerField(default=0)
     resolved_at    = models.DateTimeField(null=True, blank=True)
     created_at     = models.DateTimeField(auto_now_add=True)

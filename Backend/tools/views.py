@@ -105,7 +105,7 @@ class ToolListCreateView(APIView):
                 qs = qs.filter(daily_price__lte=int(price_max))
             except ValueError:
                 return Response(
-                    {'status': 'error', 'message': 'price_max must be an integer'},
+                    {'status': 'error', 'message': 'price_max باید عدد صحیح باشد.'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
@@ -123,7 +123,7 @@ class ToolListCreateView(APIView):
                 radius   = float(radius_raw)
             except ValueError:
                 return Response(
-                    {'status': 'error', 'message': 'lat, lng, and radius must be numbers'},
+                    {'status': 'error', 'message': 'lat، lng و radius باید عددی باشند.'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
@@ -205,7 +205,7 @@ class ToolDetailView(APIView):
         tool = self._get_tool_or_404(tool_id)
         if not tool:
             return Response(
-                {'status': 'error', 'message': 'Tool not found'},
+                {'status': 'error', 'message': 'ابزار پیدا نشد.'},
                 status=status.HTTP_404_NOT_FOUND,
             )
         serializer = ToolDetailSerializer(tool, context={'request': request})
@@ -217,12 +217,12 @@ class ToolDetailView(APIView):
         tool = self._get_tool_or_404(tool_id)
         if not tool:
             return Response(
-                {'status': 'error', 'message': 'Tool not found'},
+                {'status': 'error', 'message': 'ابزار پیدا نشد.'},
                 status=status.HTTP_404_NOT_FOUND,
             )
         if not is_owner(request.user, tool):
             return Response(
-                {'status': 'error', 'message': 'You do not have permission to edit this tool'},
+                {'status': 'error', 'message': 'شما مجوز ویرایش این ابزار را ندارید.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -245,16 +245,16 @@ class ToolDetailView(APIView):
         tool = self._get_tool_or_404(tool_id)
         if not tool:
             return Response(
-                {'status': 'error', 'message': 'Tool not found'},
+                {'status': 'error', 'message': 'ابزار پیدا نشد.'},
                 status=status.HTTP_404_NOT_FOUND,
             )
         if not is_owner(request.user, tool):
             return Response(
-                {'status': 'error', 'message': 'You do not have permission to delete this tool'},
+                {'status': 'error', 'message': 'شما مجوز حذف این ابزار را ندارید.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
         tool.delete()
-        return Response({'status': 'success', 'message': 'Tool deleted'})
+        return Response({'status': 'success', 'message': 'ابزار با موفقیت حذف شد.'})
 
 
 # ─────────────────────────────────────────────
@@ -278,14 +278,14 @@ class ToolAvailabilityView(APIView):
             tool = Tool.objects.get(pk=tool_id)
         except Tool.DoesNotExist:
             return Response(
-                {'status': 'error', 'message': 'Tool not found'},
+                {'status': 'error', 'message': 'ابزار پیدا نشد.'},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
         month_param = request.query_params.get('month')   # e.g. "2025-06"
         if not month_param:
             return Response(
-                {'status': 'error', 'message': 'month parameter is required (format: YYYY-MM)'},
+                {'status': 'error', 'message': 'پارامتر month (با فرمت YYYY-MM) الزامی است.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -293,7 +293,7 @@ class ToolAvailabilityView(APIView):
             year, month = map(int, month_param.split('-'))
         except (ValueError, AttributeError):
             return Response(
-                {'status': 'error', 'message': 'Invalid month format. Use YYYY-MM'},
+                {'status': 'error', 'message': 'فرمت ماه نامعتبر است. از فرمت YYYY-MM استفاده کنید.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -348,13 +348,13 @@ class ToolImageUploadView(APIView):
             tool = Tool.objects.get(pk=tool_id)
         except Tool.DoesNotExist:
             return Response(
-                {'status': 'error', 'message': 'Tool not found'},
+                {'status': 'error', 'message': 'ابزار پیدا نشد.'},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
         if not is_owner(request.user, tool):
             return Response(
-                {'status': 'error', 'message': 'You do not have permission to add images to this tool'},
+                {'status': 'error', 'message': 'شما مجوز افزودن تصویر به این ابزار را ندارید.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
 

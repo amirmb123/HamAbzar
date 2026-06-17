@@ -2,7 +2,7 @@
 tools/serializers.py
 --------------------
 Serializers for Category, City, Tool, and ToolImage.
- 
+
 Design notes:
 - OwnerSerializer  : read-only nested object shown inside ToolListSerializer
 - CategorySerializer / CitySerializer: lightweight, used for dropdowns
@@ -163,28 +163,28 @@ class ToolWriteSerializer(serializers.ModelSerializer):
     def validate_latitude(self, value):
         if not (-90 <= value <= 90):
             raise serializers.ValidationError(
-                "Latitude must be between -90 and 90."
+                "عرض جغرافیایی باید بین ۹۰- و ۹۰ باشد."
             )
         return value
 
     def validate_longitude(self, value):
         if not (-180 <= value <= 180):
             raise serializers.ValidationError(
-                "Longitude must be between -180 and 180."
+                "طول جغرافیایی باید بین ۱۸۰- و ۱۸۰ باشد."
             )
         return value
 
     def validate_daily_price(self, value):
         if value <= 0:
             raise serializers.ValidationError(
-                "Daily price must be a positive number."
+                "قیمت روزانه باید عددی مثبت باشد."
             )
         return value
 
     def validate_deposit_amount(self, value):
         if value < 0:
             raise serializers.ValidationError(
-                "Deposit amount cannot be negative."
+                "مبلغ ضمانت نمی‌تواند منفی باشد."
             )
         return value
 
@@ -206,7 +206,7 @@ class ToolImageUploadSerializer(serializers.ModelSerializer):
         tool = self.context.get('tool')
         if tool and tool.images.count() >= 5:
             raise serializers.ValidationError(
-                "A tool can have at most 5 images."
+                "هر ابزار حداکثر ۵ تصویر می‌تواند داشته باشد."
             )
         return attrs
 

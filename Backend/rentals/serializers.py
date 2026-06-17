@@ -24,7 +24,7 @@ from tools.models import Tool
 # ─────────────────────────────────────────────
 
 class ToolSnapshotSerializer(serializers.Serializer):
-    """فقط اطلاعات ابزار که داخل rental نشون داده میشه"""
+    """Tool information snapshot for rental display."""
     id             = serializers.IntegerField()
     name           = serializers.CharField()
     daily_price    = serializers.IntegerField()
@@ -32,7 +32,7 @@ class ToolSnapshotSerializer(serializers.Serializer):
 
 
 class UserSnapshotSerializer(serializers.Serializer):
-    """فقط اطلاعات کاربر که داخل rental نشون داده میشه"""
+    """User information snapshot for rental display."""
     id        = serializers.IntegerField()
     full_name = serializers.CharField()
     phone     = serializers.CharField()
@@ -94,9 +94,9 @@ class RentalCreateSerializer(serializers.Serializer):
         try:
             tool = Tool.objects.get(pk=value)
         except Tool.DoesNotExist:
-            raise serializers.ValidationError("Tool not found.")
+            raise serializers.ValidationError("ابزار پیدا نشد.")
         if not tool.is_available:
-            raise serializers.ValidationError("This tool is not available for rent.")
+            raise serializers.ValidationError("این ابزار برای اجاره در دسترس نیست.")
         return value
 
     def validate(self, attrs):
@@ -104,17 +104,17 @@ class RentalCreateSerializer(serializers.Serializer):
         end   = attrs['end_date']
         today = timezone.now().date()
 
-        # تاریخ‌ها معقول هستند؟
+        # Check that dates are reasonable.
         if start < today:
             raise serializers.ValidationError(
-                {"start_date": "Start date cannot be in the past."}
+                {"start_date": "تاریخ شروع نمی‌تواند در گذشته باشد."}
             )
         if end <= start:
             raise serializers.ValidationError(
-                {"end_date": "End date must be after start date."}
+                {"end_date": "تاریخ پایان باید بعد از تاریخ شروع باشد."}
             )
 
-        # ابزار در این بازه آزاده؟
+        # Check tool availability for the selected dates.
         tool_id = attrs['tool_id']
         overlap = Rental.objects.filter(
             tool_id=tool_id,
@@ -124,7 +124,7 @@ class RentalCreateSerializer(serializers.Serializer):
         ).exists()
         if overlap:
             raise serializers.ValidationError(
-                "This tool is already booked for the selected dates."
+                "این ابزار برای تاریخ‌های انتخاب شده رزرو شده است."
             )
 
         return attrs
@@ -144,13 +144,13 @@ class ReviewCreateSerializer(serializers.Serializer):
         request = self.context['request']
         user    = request.user
 
-        # فقط بعد از returned میشه امتیاز داد
+        # Reviews are only allowed after the tool has been returned.
         if rental.status != 'returned':
             raise serializers.ValidationError(
-                "Reviews can only be submitted after the tool is returned."
+                "امتیازدهی فقط پس از بازگشت ابزار امکان‌پذیر است."
             )
 
-        # تعیین طرف مقابل بر اساس نقش کاربر در rental
+        # Determine the other party based on user's role in the rental.
         is_borrower = user.id == rental.borrower_id
         is_owner    = user.id == rental.tool.owner_id
 
@@ -159,23 +159,23 @@ class ReviewCreateSerializer(serializers.Serializer):
         elif is_owner:
             expected_reviewed_id = rental.borrower_id
         else:
-            # این حالت نباید پیش بیاد چون is_party در view چک شده
-            raise serializers.ValidationError("Access denied.")
+            # This case should not occur because is_party is checked in the view.
+            raise serializers.ValidationError("دسترسی غیرمجاز.")
 
-        # فقط باید به طرف مقابل امتیاز بدی
+        # User must review the opposite party.
         if attrs['reviewed_id'] != expected_reviewed_id:
             raise serializers.ValidationError(
-                "You can only review the other party of this rental."
+                "شما فقط می‌توانید به طرف مقابل این رزرو امتیاز دهید."
             )
 
-        # قبلاً امتیاز دادی؟
+        # Check if a review already exists from this user for this rental.
         already = Review.objects.filter(
             rental=rental,
             reviewer=user,
         ).exists()
         if already:
             raise serializers.ValidationError(
-                "You have already submitted a review for this rental."
+                "شما قبلاً برای این رزرو امتیاز ثبت کرده‌اید."
             )
 
         return attrs

@@ -53,12 +53,12 @@ def get_rental_or_404(rental_id):
 
 
 def is_party(user, rental):
-    """آیا کاربر در این رزرو نقش داره؟ (صاحب یا کرایه‌گیرنده)"""
+    """Check if user is a party (owner or borrower) to this rental."""
     return user.id in (rental.borrower_id, rental.tool.owner_id)
 
 
 def update_user_rating(user):
-    """میانگین rating کاربر رو از جدول reviews آپدیت کن"""
+    """Update user's average rating from reviews."""
     result = Review.objects.filter(reviewed=user).aggregate(
         avg=Avg('rating'),
         cnt=Count('id'),
@@ -79,7 +79,7 @@ class RentalCreateView(APIView):
     def post(self, request):
         serializer = RentalCreateSerializer(data=request.data)
         if not serializer.is_valid():
-            # تداخل تاریخ → 409، بقیه خطاها → 400
+            # Date conflict → 409, other errors → 400
             if 'date_conflict' in serializer.errors:
                 return Response(
                     {'status': 'error', 'message': serializer.errors['date_conflict'][0]},
@@ -94,37 +94,36 @@ class RentalCreateView(APIView):
         tool  = Tool.objects.select_related('owner').get(pk=data['tool_id'])
         borrower = request.user
 
-        # نمیشه ابزار خودت رو کرایه کنی
+        # User cannot rent their own tool
         if tool.owner == borrower:
             return Response(
-                {'status': 'error', 'message': 'You cannot rent your own tool.'},
+                {'status': 'error', 'message': 'شما نمی‌توانید ابزار خودتان را اجاره کنید.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # محاسبه قیمت
+        # Calculate pricing
         days         = (data['end_date'] - data['start_date']).days
         total_price  = days * tool.daily_price
         deposit_held = tool.deposit_amount
         total_needed = total_price + deposit_held
 
-        # بررسی موجودی کیف پول
+        # Check wallet balance
         if borrower.wallet_balance < total_needed:
             return Response(
                 {
                     'status': 'error',
-                    'message': f'Insufficient wallet balance. '
-                               f'Required: {total_needed}, Available: {borrower.wallet_balance}',
+                    'message': f'موجودی کیف پول کافی نیست. مبلغ مورد نیاز: {total_needed}، موجودی: {borrower.wallet_balance}',
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # همه چیز atomic — یا همه انجام میشه یا هیچ‌کدام
+        # Everything atomic — all or nothing
         with transaction.atomic():
-            # کسر از کیف پول
+            # Deduct from wallet
             borrower.wallet_balance -= total_needed
             borrower.save(update_fields=['wallet_balance'])
 
-            # ساخت rental
+            # Create rental
             rental = Rental.objects.create(
                 tool         = tool,
                 borrower     = borrower,
@@ -135,7 +134,7 @@ class RentalCreateView(APIView):
                 status       = 'pending',
             )
 
-            # ثبت تراکنش‌های مالی
+            # Record financial transactions
             Transaction.objects.create(
                 rental    = rental,
                 from_user = borrower,
@@ -208,14 +207,14 @@ class RentalDetailView(APIView):
         rental = get_rental_or_404(rental_id)
         if not rental:
             return Response(
-                {'status': 'error', 'message': 'Rental not found.'},
+                {'status': 'error', 'message': 'رزرو پیدا نشد.'},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # فقط طرفین می‌تونن ببینن
+        # Only parties can view
         if not is_party(request.user, rental) and not request.user.is_admin:
             return Response(
-                {'status': 'error', 'message': 'Access denied.'},
+                {'status': 'error', 'message': 'دسترسی غیرمجاز.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -236,17 +235,17 @@ class RentalConfirmView(APIView):
         rental = get_rental_or_404(rental_id)
         if not rental:
             return Response(
-                {'status': 'error', 'message': 'Rental not found.'},
+                {'status': 'error', 'message': 'رزرو پیدا نشد.'},
                 status=status.HTTP_404_NOT_FOUND,
             )
         if rental.tool.owner != request.user:
             return Response(
-                {'status': 'error', 'message': 'Only the tool owner can confirm rentals.'},
+                {'status': 'error', 'message': 'فقط صاحب ابزار می‌تواند رزرو را تایید کند.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
         if rental.status != 'pending':
             return Response(
-                {'status': 'error', 'message': f'Cannot confirm a rental with status: {rental.status}'},
+                {'status': 'error', 'message': f'امکان تایید رزرو با وضعیت {rental.status} وجود ندارد.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -263,17 +262,17 @@ class RentalHandoverView(APIView):
         rental = get_rental_or_404(rental_id)
         if not rental:
             return Response(
-                {'status': 'error', 'message': 'Rental not found.'},
+                {'status': 'error', 'message': 'رزرو پیدا نشد.'},
                 status=status.HTTP_404_NOT_FOUND,
             )
         if rental.tool.owner != request.user:
             return Response(
-                {'status': 'error', 'message': 'Only the tool owner can mark handover.'},
+                {'status': 'error', 'message': 'فقط صاحب ابزار می‌تواند تحویل را ثبت کند.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
         if rental.status != 'confirmed':
             return Response(
-                {'status': 'error', 'message': f'Cannot hand over a rental with status: {rental.status}'},
+                {'status': 'error', 'message': f'امکان تحویل رزرو با وضعیت {rental.status} وجود ندارد.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -290,22 +289,22 @@ class RentalReturnView(APIView):
         rental = get_rental_or_404(rental_id)
         if not rental:
             return Response(
-                {'status': 'error', 'message': 'Rental not found.'},
+                {'status': 'error', 'message': 'رزرو پیدا نشد.'},
                 status=status.HTTP_404_NOT_FOUND,
             )
         if rental.tool.owner != request.user:
             return Response(
-                {'status': 'error', 'message': 'Only the tool owner can confirm the return.'},
+                {'status': 'error', 'message': 'فقط صاحب ابزار می‌تواند بازگشت را تایید کند.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
         if rental.status != 'active':
             return Response(
-                {'status': 'error', 'message': f'Cannot return a rental with status: {rental.status}'},
+                {'status': 'error', 'message': f'امکان بازگشت رزرو با وضعیت {rental.status} وجود ندارد.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         with transaction.atomic():
-            # قفل کردن رکوردهای کاربران برای جلوگیری از race condition
+            # Lock user records to prevent race conditions
             borrower = (
                 rental.borrower.__class__._default_manager
                 .select_for_update()
@@ -317,7 +316,7 @@ class RentalReturnView(APIView):
                 .get(pk=rental.tool.owner_id)
             )
 
-            # ۱. برگشت ضمانت به قرض‌گیرنده
+            # 1. Return deposit to borrower
             borrower.wallet_balance += rental.deposit_held
             borrower.save(update_fields=['wallet_balance'])
 
@@ -330,7 +329,7 @@ class RentalReturnView(APIView):
                 note      = 'Deposit returned after successful rental.',
             )
 
-            # ۲. پرداخت اجاره به صاحب ابزار (escrow release)
+            # 2. Pay rental fee to tool owner (escrow release)
             owner.wallet_balance += rental.total_price
             owner.save(update_fields=['wallet_balance'])
 
@@ -343,7 +342,7 @@ class RentalReturnView(APIView):
                 note      = f'Rental income for "{rental.tool.name}" (Rental #{rental.id}).',
             )
 
-            # ۳. تغییر وضعیت
+            # 3. Update status
             rental.status = 'returned'
             rental.save(update_fields=['status', 'updated_at'])
 
@@ -358,7 +357,7 @@ class RentalCancelView(APIView):
         rental = get_rental_or_404(rental_id)
         if not rental:
             return Response(
-                {'status': 'error', 'message': 'Rental not found.'},
+                {'status': 'error', 'message': 'رزرو پیدا نشد.'},
                 status=status.HTTP_404_NOT_FOUND,
             )
         is_borrower = request.user.id == rental.borrower_id
@@ -366,24 +365,24 @@ class RentalCancelView(APIView):
 
         if not is_borrower and not is_owner:
             return Response(
-                {'status': 'error', 'message': 'Access denied.'},
+                {'status': 'error', 'message': 'دسترسی غیرمجاز.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
         if rental.status != 'pending':
             return Response(
-                {'status': 'error', 'message': 'Only pending rentals can be cancelled.'},
+                {'status': 'error', 'message': 'فقط رزروهای در انتظار قابل لغو هستند.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         with transaction.atomic():
-            # قفل کردن رکورد قرض‌گیرنده برای جلوگیری از race condition
+            # Lock borrower record to prevent race condition
             borrower = (
                 rental.borrower.__class__._default_manager
                 .select_for_update()
                 .get(pk=rental.borrower_id)
             )
 
-            # برگشت کامل پول (اجاره + ضمانت)
+            # Refund full amount (rental + deposit)
             refund = rental.total_price + rental.deposit_held
             borrower.wallet_balance += refund
             borrower.save(update_fields=['wallet_balance'])
@@ -391,7 +390,7 @@ class RentalCancelView(APIView):
             rental.status = 'cancelled'
             rental.save(update_fields=['status', 'updated_at'])
 
-            # دو تراکنش جداگانه برای شفافیت حسابداری
+            # Two separate transactions for accounting clarity
             Transaction.objects.create(
                 rental    = rental,
                 from_user = None,
@@ -424,12 +423,12 @@ class ReviewCreateView(APIView):
         rental = get_rental_or_404(rental_id)
         if not rental:
             return Response(
-                {'status': 'error', 'message': 'Rental not found.'},
+                {'status': 'error', 'message': 'رزرو پیدا نشد.'},
                 status=status.HTTP_404_NOT_FOUND,
             )
         if not is_party(request.user, rental):
             return Response(
-                {'status': 'error', 'message': 'Access denied.'},
+                {'status': 'error', 'message': 'دسترسی غیرمجاز.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -448,7 +447,7 @@ class ReviewCreateView(APIView):
             reviewed = User.objects.get(pk=data['reviewed_id'])
         except User.DoesNotExist:
             return Response(
-                {'status': 'error', 'message': 'Reviewed user not found.'},
+                {'status': 'error', 'message': 'کاربر مورد نظر یافت نشد.'},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
@@ -461,7 +460,7 @@ class ReviewCreateView(APIView):
                 comment  = data.get('comment', ''),
             )
 
-            # قفل رکورد برای جلوگیری از race condition روی rating
+            # Lock record to prevent race condition on rating
             reviewed_locked = (
                 reviewed.__class__._default_manager
                 .select_for_update()
@@ -470,7 +469,7 @@ class ReviewCreateView(APIView):
             update_user_rating(reviewed_locked)
 
         return Response(
-            {'status': 'success', 'message': 'Review submitted successfully.'},
+            {'status': 'success', 'message': 'امتیاز با موفقیت ثبت شد.'},
             status=status.HTTP_201_CREATED,
         )
 
@@ -481,7 +480,7 @@ class ReviewCreateView(APIView):
 
 class MessageListCreateView(APIView):
     """
-    GET  /api/rentals/<id>/messages/ — polling هر ۵ ثانیه
+    GET  /api/rentals/<id>/messages/ — polling every 5 seconds
     POST /api/rentals/<id>/messages/
     """
     permission_classes = [IsAuthenticated]
@@ -493,18 +492,18 @@ class MessageListCreateView(APIView):
         rental = get_rental_or_404(rental_id)
         if not rental:
             return Response(
-                {'status': 'error', 'message': 'Rental not found.'},
+                {'status': 'error', 'message': 'رزرو پیدا نشد.'},
                 status=status.HTTP_404_NOT_FOUND,
             )
         if not self._check_access(request.user, rental):
             return Response(
-                {'status': 'error', 'message': 'Access denied.'},
+                {'status': 'error', 'message': 'دسترسی غیرمجاز.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
         messages = Message.objects.filter(rental=rental).select_related('sender')
 
-        # علامت‌گذاری پیام‌های خوانده‌نشده
+        # Mark unread messages as read
         Message.objects.filter(
             rental=rental,
             is_read=False,
@@ -517,19 +516,19 @@ class MessageListCreateView(APIView):
         rental = get_rental_or_404(rental_id)
         if not rental:
             return Response(
-                {'status': 'error', 'message': 'Rental not found.'},
+                {'status': 'error', 'message': 'رزرو پیدا نشد.'},
                 status=status.HTTP_404_NOT_FOUND,
             )
         if not self._check_access(request.user, rental):
             return Response(
-                {'status': 'error', 'message': 'Access denied.'},
+                {'status': 'error', 'message': 'دسترسی غیرمجاز.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
         content = request.data.get('content', '').strip()
         if not content:
             return Response(
-                {'status': 'error', 'message': 'Message content cannot be empty.'},
+                {'status': 'error', 'message': 'متن پیام نمی‌تواند خالی باشد.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

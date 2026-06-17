@@ -1,16 +1,16 @@
 from django.shortcuts import render
 
 """
-Dispute Views — همابزار
+Dispute Views — Hamabzar
 ────────────────────────────────────────────────
 Business rules:
-  - فقط طرفین رزرو (borrower یا owner) می‌توانند شکایت ثبت کنند
-  - رزرو باید در وضعیت returned یا active باشد تا شکایت قابل ثبت باشد
-  - هر رزرو فقط یک شکایت می‌تواند داشته باشد (OneToOne)
-  - فقط ادمین می‌تواند شکایت را resolve کند
-  - هنگام resolve: penalty_amount از ضمانت borrower کسر و مابقی برمی‌گردد
-  - رزرو پس از resolve به وضعیت 'disputed' می‌رود
-  - همه عملیات مالی داخل transaction.atomic() انجام می‌شود
+  - Only the rental parties (borrower or owner) can file a dispute.
+  - Rental must be in 'returned' or 'active' status to allow dispute creation.
+  - Each rental can have only one dispute (OneToOne).
+  - Only admin can resolve a dispute.
+  - When resolving: penalty_amount is deducted from borrower's deposit and the remainder is refunded.
+  - After resolution, the rental status changes to 'disputed'.
+  - All financial operations are performed inside transaction.atomic().
 """
 
 from django.db import transaction
@@ -48,38 +48,38 @@ def is_party(user, rental):
 # ─────────────────────────────────────────────
 
 class DisputeCreateView(APIView):
-    """ثبت شکایت برای یک رزرو — توسط طرفین"""
+    """Create a dispute for a rental — by involved parties."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request, rental_id):
         rental = get_rental_or_404(rental_id)
         if not rental:
             return Response(
-                {'status': 'error', 'message': 'Rental not found.'},
+                {'status': 'error', 'message': 'رزرو پیدا نشد.'},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # فقط طرفین رزرو
+        # Only rental parties
         if not is_party(request.user, rental):
             return Response(
-                {'status': 'error', 'message': 'Access denied.'},
+                {'status': 'error', 'message': 'دسترسی غیرمجاز.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        # فقط در وضعیت active یا returned شکایت پذیرفته می‌شود
+        # Dispute allowed only in 'active' or 'returned' status
         if rental.status not in ('active', 'returned'):
             return Response(
                 {
                     'status': 'error',
-                    'message': 'Disputes can only be raised for active or returned rentals.',
+                    'message': 'شکایت فقط برای رزروهای فعال یا برگشت‌خورده قابل ثبت است.',
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # هر رزرو فقط یک شکایت
+        # Only one dispute per rental
         if hasattr(rental, 'dispute'):
             return Response(
-                {'status': 'error', 'message': 'A dispute has already been raised for this rental.'},
+                {'status': 'error', 'message': 'برای این رزرو قبلاً شکایت ثبت شده است.'},
                 status=status.HTTP_409_CONFLICT,
             )
 
@@ -104,17 +104,17 @@ class DisputeCreateView(APIView):
 
 
 # ─────────────────────────────────────────────
-# GET /api/disputes/   (ادمین فقط)
+# GET /api/disputes/   (admin only)
 # ─────────────────────────────────────────────
 
 class DisputeListView(APIView):
-    """لیست همه شکایت‌ها — فقط ادمین"""
+    """List all disputes — admin only."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         if not request.user.is_admin:
             return Response(
-                {'status': 'error', 'message': 'Admin access required.'},
+                {'status': 'error', 'message': 'دسترسی ادمین لازم است.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -124,7 +124,7 @@ class DisputeListView(APIView):
             .order_by('-created_at')
         )
 
-        # فیلتر اختیاری بر اساس status
+        # Optional filter by status
         filter_status = request.query_params.get('status')
         if filter_status:
             disputes = disputes.filter(status=filter_status)
@@ -134,17 +134,17 @@ class DisputeListView(APIView):
 
 
 # ─────────────────────────────────────────────
-# PATCH /api/disputes/<id>/resolve/   (ادمین فقط)
+# PATCH /api/disputes/<id>/resolve/   (admin only)
 # ─────────────────────────────────────────────
 
 class DisputeResolveView(APIView):
-    """حل شکایت و تعیین جریمه — فقط ادمین"""
+    """Resolve a dispute and impose a penalty — admin only."""
     permission_classes = [IsAuthenticated]
 
     def patch(self, request, dispute_id):
         if not request.user.is_admin:
             return Response(
-                {'status': 'error', 'message': 'Admin access required.'},
+                {'status': 'error', 'message': 'دسترسی ادمین لازم است.'},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -156,13 +156,13 @@ class DisputeResolveView(APIView):
             )
         except Dispute.DoesNotExist:
             return Response(
-                {'status': 'error', 'message': 'Dispute not found.'},
+                {'status': 'error', 'message': 'شکایت پیدا نشد.'},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
         if dispute.status == 'resolved':
             return Response(
-                {'status': 'error', 'message': 'This dispute has already been resolved.'},
+                {'status': 'error', 'message': 'این شکایت قبلاً حل شده است.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -178,29 +178,28 @@ class DisputeResolveView(APIView):
         rental         = dispute.rental
         deposit        = rental.deposit_held
 
-        # جریمه نمی‌تواند از مبلغ ضمانت بیشتر باشد
+        # Penalty must not exceed deposit amount
         if penalty_amount > deposit:
             return Response(
                 {
                     'status': 'error',
                     'message': (
-                        f'Penalty ({penalty_amount}) cannot exceed '
-                        f'deposit amount ({deposit}).'
+                        f'جریمه ({penalty_amount}) نمی‌تواند از مبلغ ضمانت ({deposit}) بیشتر باشد.'
                     ),
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # دو حالت کاملاً متفاوت داریم:
-        #   - rental.status == 'active'   → پول هنوز در escrow است، چیزی پرداخت/برگشت نشده.
-        #   - rental.status == 'returned' → deposit کامل به borrower برگشته و total_price
-        #                                    کامل به owner پرداخت شده (در RentalReturnView).
-        #                                    اینجا دیگر "رهاسازی سپرده" بی‌معنی است؛ penalty باید
-        #                                    مستقیماً از wallet_balance خودِ borrower کسر شود.
+        # Two distinct scenarios:
+        #   - rental.status == 'active'   → money is still in escrow, no payment/refund has occurred.
+        #   - rental.status == 'returned' → deposit fully refunded to borrower and total_price
+        #                                    fully paid to owner (in RentalReturnView).
+        #                                    Here, "releasing deposit" is meaningless; penalty must
+        #                                    be deducted directly from borrower's wallet_balance.
         rental_already_returned = (rental.status == 'returned')
 
         if rental_already_returned and penalty_amount > 0:
-            # موجودی کافی برای کسر جریمه را داشته باشد، وگرنه resolve را رد می‌کنیم
+            # Ensure borrower has enough balance to cover the penalty, otherwise reject resolution
             borrower_balance_check = (
                 rental.borrower.__class__._default_manager.get(pk=rental.borrower_id)
             )
@@ -209,15 +208,15 @@ class DisputeResolveView(APIView):
                     {
                         'status': 'error',
                         'message': (
-                            f'Borrower wallet balance ({borrower_balance_check.wallet_balance}) '
-                            f'is insufficient to cover the penalty ({penalty_amount}).'
+                            f'موجودی کیف پول قرض‌گیرنده ({borrower_balance_check.wallet_balance}) '
+                            f'برای پوشش جریمه ({penalty_amount}) کافی نیست.'
                         ),
                     },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
         with transaction.atomic():
-            # قفل روی borrower و owner برای جلوگیری از race condition
+            # Lock borrower and owner to prevent race conditions
             borrower = (
                 rental.borrower.__class__._default_manager
                 .select_for_update()
@@ -230,8 +229,8 @@ class DisputeResolveView(APIView):
             )
 
             if rental_already_returned:
-                # ── حالت ۱: رزرو از قبل return شده — پول‌ها نهایی هستند ──
-                # penalty باید مستقیماً از کیف‌پول borrower کسر و به owner داده شود.
+                # ── Scenario 1: rental already returned — funds are final ──
+                # Penalty is directly taken from borrower's wallet and given to owner.
                 if penalty_amount > 0:
                     borrower.wallet_balance -= penalty_amount
                     borrower.save(update_fields=['wallet_balance'])
@@ -250,14 +249,14 @@ class DisputeResolveView(APIView):
                             f'from dispute #{dispute.id}.'
                         ),
                     )
-                # توجه: deposit_held و total_price قبلاً در RentalReturnView تسویه شده‌اند،
-                # هیچ پرداخت دیگری لازم نیست.
+                # Note: deposit_held and total_price were already settled in RentalReturnView,
+                # no additional payment is required.
 
             else:
-                # ── حالت ۲: رزرو هنوز active است — پول هنوز در escrow است ──
+                # ── Scenario 2: rental is still active — money is in escrow ──
                 refund_to_borrower = deposit - penalty_amount
 
-                # ۱. برگشت مابقی ضمانت به borrower
+                # 1. Refund the remainder of the deposit to the borrower
                 if refund_to_borrower > 0:
                     borrower.wallet_balance += refund_to_borrower
                     borrower.save(update_fields=['wallet_balance'])
@@ -274,7 +273,7 @@ class DisputeResolveView(APIView):
                         ),
                     )
 
-                # ۲. انتقال جریمه به صاحب ابزار
+                # 2. Transfer the penalty to the tool owner
                 if penalty_amount > 0:
                     owner.wallet_balance += penalty_amount
                     owner.save(update_fields=['wallet_balance'])
@@ -288,7 +287,7 @@ class DisputeResolveView(APIView):
                         note      = f'Penalty paid to owner from dispute #{dispute.id}.',
                     )
 
-                # ۳. پرداخت کامل اجاره (total_price) به صاحب ابزار — مستقل از penalty
+                # 3. Pay the full rental price (total_price) to the tool owner — independent of penalty
                 if rental.total_price > 0:
                     owner.wallet_balance += rental.total_price
                     owner.save(update_fields=['wallet_balance'])
@@ -302,11 +301,11 @@ class DisputeResolveView(APIView):
                         note      = f'Rental income for "{rental.tool.name}" after dispute #{dispute.id} resolved.',
                     )
 
-            # ۴. آپدیت وضعیت رزرو به disputed
+            # 4. Update rental status to 'disputed'
             rental.status = 'disputed'
             rental.save(update_fields=['status', 'updated_at'])
 
-            # ۵. resolve کردن شکایت
+            # 5. Resolve the dispute
             dispute.status         = 'resolved'
             dispute.resolution     = data['resolution']
             dispute.penalty_amount = penalty_amount
