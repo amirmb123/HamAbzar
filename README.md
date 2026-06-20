@@ -238,8 +238,8 @@ DB_PORT=5432
 | DELETE | `/tools/<id>/` | ✅ | حذف (فقط صاحب) |
 | GET | `/tools/<id>/availability/` | ❌ | تقویم روزهای اشغال |
 | POST | `/tools/<id>/images/` | ✅ | آپلود تصویر (فقط صاحب، حداکثر ۵ تصویر) |
-| GET | `/categories/` | ❌ | لیست دسته‌بندی‌ها |
-| GET | `/cities/` | ❌ | لیست شهرها |
+| GET | `/tools/categories/` | ❌ | لیست دسته‌بندی‌ها |
+| GET | `/tools/cities/` | ❌ | لیست شهرها |
 
 ### Rentals & Reviews & Chat — `http://127.0.0.1:8000/api/rentals/`
 
