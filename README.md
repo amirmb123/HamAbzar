@@ -1,7 +1,7 @@
 # 🔧 HamAbzar — Local Tool Sharing & Rental Platform
 
 > سامانه مکان‌محور کرایه و اشتراک‌گذاری ابزارآلات خانگی و صنعتی  
-> درس مهندسی نرم‌افزار | بهار 1405
+> درس مهندسی نرم‌افزار | بهار ۱۴۰۵
 
 ---
 
@@ -14,8 +14,9 @@
 - [نصب و راه‌اندازی فرانت‌اند](#نصب-و-راهاندازی-فرانتاند)
 - [متغیرهای محیطی](#متغیرهای-محیطی)
 - [API های موجود](#api-های-موجود)
+- [منطق مالی (Wallet / Escrow)](#منطق-مالی-wallet--escrow)
+- [اجرای تست‌ها](#اجرای-تستها)
 - [قوانین Git](#قوانین-git)
-- [تقسیم کار تیم](#تقسیم-کار-تیم)
 - [وضعیت پروژه](#وضعیت-پروژه)
 
 ---
@@ -28,7 +29,7 @@ HamAbzar یک پلتفرم اشتراک‌گذاری ابزار است که هم
 **سه نقش اصلی:**
 - 🔧 **صاحب ابزار** — ابزار ثبت می‌کند و اجاره می‌دهد
 - 🙋 **کرایه‌گیرنده** — ابزار جستجو و رزرو می‌کند
-- 🛡️ **ادمین** — اختلافات را داوری می‌کند
+- 🛡️ **ادمین** — اختلافات (Dispute) را داوری می‌کند
 
 ---
 
@@ -36,11 +37,11 @@ HamAbzar یک پلتفرم اشتراک‌گذاری ابزار است که هم
 
 | لایه | ابزار |
 |------|-------|
-| Backend | Python 3.12 + Django 5 + Django REST Framework |
+| Backend | Python 3.12 + Django 5.2 + Django REST Framework |
 | Authentication | JWT via `djangorestframework-simplejwt` |
 | Database | PostgreSQL 15 |
 | Frontend | React 18 + Vite |
-| HTTP Client | Axios |
+| HTTP Client | Axios / fetch |
 | Map | React Leaflet + OpenStreetMap |
 | Image Storage | Django Media Files + Pillow |
 
@@ -51,21 +52,25 @@ HamAbzar یک پلتفرم اشتراک‌گذاری ابزار است که هم
 ```
 hamabzar/
 ├── Backend/                  ← Django project
-│   ├── config/               ← settings, main urls
-│   ├── accounts/             ← User model, OTP, JWT auth
-│   ├── tools/                ← Tool listings, images, search
-│   ├── rentals/              ← Rental flow, transactions, reviews
-│   ├── disputes/             ← Dispute management
-│   ├── chat/                 ← In-rental messaging
+│   ├── config/                ← settings, root urls
+│   ├── accounts/               ← User model, OTP, JWT auth, profile
+│   ├── tools/                  ← Tool listings, images, categories/cities, search
+│   ├── rentals/                ← Rental lifecycle, transactions, reviews, chat
+│   ├── disputes/               ← Dispute create / list / resolve (admin)
+│   ├── chat/                   ← Message model (مصرف‌شده توسط rentals)
 │   ├── requirements.txt
 │   └── .env.example
-└── Frontend/                 ← React project
+└── Frontend/                  ← React project
     ├── src/
     │   ├── pages/
     │   ├── components/
     │   └── services/
     └── package.json
 ```
+
+> ℹ️ مدل `Message` در اپ `chat` تعریف شده، اما endpoint های چت زیر مسیر
+> `rentals` قرار دارند (`/api/rentals/<id>/messages/`) چون پیام‌ها همیشه به یک
+> رزرو مشخص وابسته‌اند.
 
 ---
 
@@ -107,17 +112,27 @@ cp .env.example .env
 ```
 
 **۵. ساختن دیتابیس**
-```bash
-# در PostgreSQL:
+```sql
+-- در PostgreSQL:
 CREATE DATABASE hamabzar_db;
 CREATE USER hamabzar_user WITH PASSWORD 'your_password';
 GRANT ALL PRIVILEGES ON DATABASE hamabzar_db TO hamabzar_user;
+
+-- اگر می‌خواهی python manage.py test را اجرا کنی، یوزر باید اجازه‌ی
+-- ساخت دیتابیس تست را هم داشته باشد:
+ALTER USER hamabzar_user CREATEDB;
 ```
 
 **۶. اجرای Migration**
 ```bash
+python manage.py makemigrations
 python manage.py migrate
 ```
+
+> ⚠️ اگر فیلد جدیدی به یک مدل اضافه می‌کنی، فایل migration ساخته‌شده توسط
+> `makemigrations` باید داخل پوشه‌ی `<app>/migrations/` قرار بگیرد، نه مستقیم
+> داخل پوشه‌ی اپ. در غیر این صورت Django اصلاً آن را اجرا نمی‌کند و با خطای
+> `column ... does not exist` مواجه می‌شوی.
 
 **۷. ساختن superuser**
 ```bash
@@ -127,8 +142,8 @@ python manage.py createsuperuser
 **۸. اضافه کردن داده اولیه (categories و cities)**
 ```bash
 python manage.py shell
-
-# داخل shell:
+```
+```python
 from tools.models import Category, City
 Category.objects.bulk_create([
     Category(name='Drill'), Category(name='Ladder'),
@@ -146,8 +161,8 @@ exit()
 python manage.py runserver
 ```
 
-سرور روی `http://localhost:8000` اجرا می‌شود.  
-پنل ادمین: `http://localhost:8000/admin`
+سرور روی `http://127.0.0.1:8000` اجرا می‌شود.  
+پنل ادمین: `http://127.0.0.1:8000/admin`
 
 ---
 
@@ -170,6 +185,10 @@ npm run dev
 ```
 
 فرانت روی `http://localhost:5173` اجرا می‌شود.
+
+> فرانت با بک‌اند فقط از طریق REST API (`/api/...`) صحبت می‌کند — هیچ اتصال
+> مستقیمی به دیتابیس ندارد. مطمئن شو سرور Django (`runserver`) همزمان روشن
+> است، وگرنه تمام request های فرانت با خطای network شکست می‌خورند.
 
 ---
 
@@ -196,40 +215,97 @@ DB_PORT=5432
 
 ## API های موجود
 
-### Authentication — `http://localhost:8000/api/auth/`
+### Authentication — `http://127.0.0.1:8000/api/auth/`
 
 | Method | Endpoint | Auth | توضیح |
 |--------|----------|------|-------|
-| POST | `/request-otp/` | ❌ | ارسال کد OTP |
-| POST | `/verify-otp/` | ❌ | تأیید OTP + دریافت JWT |
-| POST | `/refresh/` | ❌ | تمدید access token |
+| POST | `/request-otp/` | ❌ | ارسال کد OTP (در dev فقط در ترمینال چاپ می‌شود) |
+| POST | `/verify-otp/` | ❌ | تأیید OTP — اگر کاربر موجود باشد JWT می‌دهد، وگرنه `temp_token` برای ثبت‌نام |
+| POST | `/register/` | با `temp_token` | تکمیل ثبت‌نام کاربر جدید (username, password, ...) |
+| POST | `/login/` | ❌ | لاگین با username/password |
+| POST | `/refresh/` | ❌ | تمدید access token با refresh token |
 | GET | `/me/` | ✅ | اطلاعات کاربر جاری |
+| PATCH | `/me/` | ✅ | ویرایش پروفایل |
 
-### Tools — `http://localhost:8000/api/tools/`
+### Tools — `http://127.0.0.1:8000/api/tools/`
 
 | Method | Endpoint | Auth | توضیح |
 |--------|----------|------|-------|
-| GET | `/tools/` | ❌ | لیست ابزارها + جستجوی مکانی |
+| GET | `/tools/` | ❌ | لیست ابزارها (فقط `is_available=True`) + فیلتر + جستجوی مکانی |
 | POST | `/tools/` | ✅ | ثبت ابزار جدید |
 | GET | `/tools/<id>/` | ❌ | جزئیات ابزار |
 | PATCH | `/tools/<id>/` | ✅ | ویرایش (فقط صاحب) |
 | DELETE | `/tools/<id>/` | ✅ | حذف (فقط صاحب) |
 | GET | `/tools/<id>/availability/` | ❌ | تقویم روزهای اشغال |
-| POST | `/tools/<id>/images/` | ✅ | آپلود تصویر |
+| POST | `/tools/<id>/images/` | ✅ | آپلود تصویر (فقط صاحب، حداکثر ۵ تصویر) |
 | GET | `/categories/` | ❌ | لیست دسته‌بندی‌ها |
 | GET | `/cities/` | ❌ | لیست شهرها |
 
-### Rentals — `http://localhost:8000/api/rentals/` (در حال توسعه)
+### Rentals & Reviews & Chat — `http://127.0.0.1:8000/api/rentals/`
 
 | Method | Endpoint | Auth | توضیح |
 |--------|----------|------|-------|
-| POST | `/rentals/` | ✅ | ثبت رزرو |
-| GET | `/rentals/my/` | ✅ | رزروهای من |
-| POST | `/rentals/<id>/confirm/` | ✅ | تأیید توسط صاحب |
-| POST | `/rentals/<id>/return/` | ✅ | برگشت ابزار |
-| POST | `/rentals/<id>/dispute/` | ✅ | ثبت شکایت |
+| POST | `/rentals/` | ✅ | ثبت رزرو (پول از کیف‌پول borrower رزرو/escrow می‌شود) |
+| GET | `/rentals/my/` | ✅ | رزروهایی که خودم به‌عنوان borrower ثبت کرده‌ام |
+| GET | `/rentals/my-tools/` | ✅ | رزروهای ثبت‌شده روی ابزارهای من (به‌عنوان owner) |
+| GET | `/rentals/<id>/` | ✅ | جزئیات یک رزرو |
+| POST | `/rentals/<id>/confirm/` | ✅ | تأیید رزرو توسط صاحب ابزار |
+| POST | `/rentals/<id>/handover/` | ✅ | تحویل فیزیکی ابزار (confirmed → active) |
+| POST | `/rentals/<id>/return/` | ✅ | بازگشت ابزار — تسویه‌ی نهایی کرایه و ضمانت |
+| POST | `/rentals/<id>/cancel/` | ✅ | لغو رزرو (فقط در وضعیت pending) — بازگشت کامل پول |
+| POST | `/rentals/<id>/dispute/` | ✅ | ثبت شکایت روی رزرو active یا returned |
+| POST | `/rentals/<id>/review/` | ✅ | ثبت امتیاز به طرف مقابل (بعد از return) |
+| GET / POST | `/rentals/<id>/messages/` | ✅ | چت بین borrower و owner برای یک رزرو |
 
-> 📄 برای مستندات کامل‌تر فایل `API_CONTRACT.docx` را در پوشه `/docs` ببینید.
+### Disputes — `http://127.0.0.1:8000/api/disputes/`
+
+| Method | Endpoint | Auth | توضیح |
+|--------|----------|------|-------|
+| GET | `/disputes/` | ✅ ادمین | لیست شکایت‌ها، فیلتر اختیاری با `?status=open\|under_review\|resolved` |
+| PATCH | `/disputes/<id>/resolve/` | ✅ ادمین | حل شکایت — تعیین `resolution` و `penalty_amount` |
+
+> 📄 برای تست کامل و آماده‌ی همه‌ی endpoint‌ها به فایل Postman Collection در
+> پوشه‌ی `/docs` مراجعه کن (بخش «Postman Collection» پایین‌تر).
+
+---
+
+## منطق مالی (Wallet / Escrow)
+
+برای جلوگیری از سردرگمی، جریان پول در طول یک رزرو به‌صورت خلاصه:
+
+1. **ساخت رزرو (`POST /rentals/`)** — کل `total_price + deposit_held` فوراً از
+   `wallet_balance` کرایه‌گیرنده کسر می‌شود (پیش از تأیید صاحب ابزار).
+2. **لغو (`cancel`)** — اگر رزرو هنوز `pending` باشد، کل مبلغ بدون کسری به
+   کرایه‌گیرنده برمی‌گردد.
+3. **بازگشت عادی (`return`)** — `deposit_held` کامل به کرایه‌گیرنده برمی‌گردد و
+   `total_price` کامل به صاحب ابزار پرداخت می‌شود.
+4. **شکایت (`dispute` → ادمین `resolve`)**
+   - اگر رزرو هنوز `active` باشد: `penalty_amount` از `deposit_held` کسر و به
+     owner داده می‌شود، مابقی به borrower برمی‌گردد؛ `total_price` هم در همین
+     لحظه و به‌طور کامل به owner پرداخت می‌شود.
+   - اگر رزرو از قبل `returned` شده باشد (یعنی پول‌ها قبلاً نهایی شده‌اند):
+     `penalty_amount` مستقیماً از `wallet_balance` کرایه‌گیرنده کسر و به owner
+     اضافه می‌شود (نه از یک سپرده‌ی از قبل‌رهاشده).
+
+هر حرکت پول یک رکورد `Transaction` می‌سازد تا تاریخچه‌ی مالی هر کاربر قابل
+بازسازی و audit باشد.
+
+---
+
+## اجرای تست‌ها
+
+```bash
+python manage.py test
+```
+
+> هر اپ (`accounts`, `tools`, `rentals`, `disputes`, `chat`) پوشه‌ی `tests/`
+> مخصوص خود را دارد. اجرای تست یک دیتابیس موقت (`test_<DB_NAME>`) می‌سازد؛
+> یوزر دیتابیست باید پرمیژن `CREATEDB` داشته باشد (به بخش نصب بک‌اند نگاه کن).
+
+برای اجرای تست‌های فقط یک اپ:
+```bash
+python manage.py test disputes
+```
 
 ---
 
@@ -294,29 +370,19 @@ git push origin feature/my-feature
 
 ---
 
-## تقسیم کار تیم
-
-| عضو | نقش | مسئولیت |
-|-----|-----|---------|
-| BE1 | Backend | Auth API، Rental API، Review API، دیتابیس |
-| BE2 | Backend | Tools API، Dispute API، Chat API |
-| FE1 | Frontend | Login page، Home page، صفحه جستجو |
-| FE2 | Frontend | Tool detail، فرم ثبت ابزار، تقویم رزرو |
-| FS | Full-Stack | Git/Deploy، Map integration، Chat UI |
-
----
-
 ## وضعیت پروژه
 
 | بخش | وضعیت |
 |-----|--------|
 | دیتابیس PostgreSQL | ✅ کامل |
 | Django Setup | ✅ کامل |
-| Auth API | ✅ کامل |
+| Auth API (OTP + login + register) | ✅ کامل |
 | Tools API | ✅ کامل |
-| Rental API | 🔄 در حال توسعه |
-| Chat API | ⏳ هفته ۵ |
-| Dispute API | ⏳ هفته ۵ |
+| Rental API (کل چرخه: confirm → handover → return / cancel) | ✅ کامل |
+| Review API | ✅ کامل |
+| Chat API | ✅ کامل |
+| Dispute API | ✅ کامل |
+| تست‌های Django (همه‌ی اپ‌ها) | 🔄 در حال تکمیل |
 | Frontend Login | 🔄 در حال طراحی |
 | Frontend Home | 🔄 در حال طراحی |
 
@@ -331,10 +397,17 @@ git push origin feature/my-feature
 فایل‌های آپلودی در پوشه `Backend/media/` ذخیره می‌شوند. این پوشه در `.gitignore` قرار دارد.
 
 **CORS**  
-فرانت روی `localhost:5173` باید بتواند با بک‌اند روی `localhost:8000` ارتباط برقرار کند. تنظیمات CORS در `settings.py` انجام شده.
+فرانت روی `localhost:5173` یا `localhost:3000` باید بتواند با بک‌اند روی
+`127.0.0.1:8000` ارتباط برقرار کند. تنظیمات در `CORS_ALLOWED_ORIGINS` داخل
+`settings.py` انجام شده است. اگر فرانت روی پورت یا origin دیگری اجرا می‌شود
+(مثلاً با `127.0.0.1` به‌جای `localhost`، یا پورت متفاوت)، باید آن را به همین
+لیست اضافه کنی.
 
 **Postman Collection**  
-فایل `hamabzar.postman_collection.json` در پوشه `/docs` قرار دارد. آن را import کن و همه endpoint‌ها را تست کن.
+فایل کالکشن Postman در پوشه `/docs` قرار دارد و شامل فولدرهای جدا برای Auth،
+Tools، Rentals، Cancel Flow، Review، Chat و Dispute است. آن را import کن و
+endpoint‌ها را به‌ترتیب تست کن (برخی تست‌ها به collection variable هایی مثل
+`access_token`, `access_token_2`, `access_token_admin` نیاز دارند).
 
 ---
 
