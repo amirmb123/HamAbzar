@@ -1,16 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { requestOtp, verifyOtp } from "../services/api";
+import { requestOtp, verifyOtp, registerUser } from "../services/api";
 
-const RESEND_SECONDS = 105; // ۱:۴۵ — مطابق طراحی
+const RESEND_SECONDS = 105;
 
-/**
- * مدیریت فلوی سه‌مرحله‌ای ورود: phone → otp → success
- * step هم به UI گفته می‌شه کدوم state رو نشون بده.
- */
 export function useAuthFlow() {
-  const [step, setStep] = useState("phone"); // phone | otp | success
+  const [step, setStep] = useState("phone"); // phone | otp | register | success
   const [phone, setPhone] = useState("");
   const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]);
+  const [tempToken, setTempToken] = useState(null);
   const [secondsLeft, setSecondsLeft] = useState(RESEND_SECONDS);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
@@ -44,10 +41,43 @@ export function useAuthFlow() {
     setErrorMessage(null);
     setIsSubmitting(true);
     try {
-      await verifyOtp(phone, otpCode);
-      setStep("success");
+      const res = await verifyOtp(phone, otpCode);
+
+      if (res.next === "login") {
+        // کاربر قدیمی — توکن مستقیم دریافت شد
+        localStorage.setItem("access_token", res.data.access);
+        localStorage.setItem("refresh_token", res.data.refresh);
+        setStep("success");
+      } else if (res.next === "register") {
+        // کاربر جدید — باید فرم ثبت‌نام پر کند
+        setTempToken(res.data.temp_token);
+        setStep("register");
+      }
     } catch (err) {
       setErrorMessage(err.message || "کد وارد شده صحیح نیست");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const submitRegister = async (form) => {
+    setErrorMessage(null);
+    setIsSubmitting(true);
+    try {
+      const res = await registerUser({
+        temp_token: tempToken,
+        first_name: form.firstName,
+        last_name: form.lastName,
+        username: form.username,
+        password: form.password,
+        password2: form.password2,
+        email: form.email,
+      });
+      localStorage.setItem("access_token", res.data.access);
+      localStorage.setItem("refresh_token", res.data.refresh);
+      setStep("success");
+    } catch (err) {
+      setErrorMessage(err.message || "خطا در ثبت‌نام. دوباره تلاش کنید.");
     } finally {
       setIsSubmitting(false);
     }
@@ -76,6 +106,7 @@ export function useAuthFlow() {
     errorMessage,
     submitPhone,
     submitOtp,
+    submitRegister,
     resendOtp,
     goBackToPhone,
   };

@@ -168,8 +168,9 @@ export async function fetchRelatedTools(id) {
 import axiosClient from "./axiosClient";
 
 export async function requestOtp(phone) {
+  const fullPhone = phone.startsWith("0") ? phone : `0${phone}`;
   try {
-    const res = await axiosClient.post("/auth/request-otp/", { phone: `0${phone}` });
+    const res = await axiosClient.post("/auth/request-otp/", { phone: fullPhone });
     return res.data;
   } catch (err) {
     const msg = err.response?.data?.message || "ارسال کد ناموفق بود.";
@@ -178,19 +179,24 @@ export async function requestOtp(phone) {
 }
 
 export async function verifyOtp(phone, code) {
+  const fullPhone = phone.startsWith("0") ? phone : `0${phone}`;
   try {
-    const res = await axiosClient.post("/auth/verify-otp/", { phone: `0${phone}`, code });
-    const { data } = res.data;
-
-    // ذخیره توکن‌ها
-    if (data.access) {
-      localStorage.setItem("access_token", data.access);
-      localStorage.setItem("refresh_token", data.refresh);
-    }
-
+    const res = await axiosClient.post("/auth/verify-otp/", { phone: fullPhone, code });
+    // res.data = { status, next: 'login'|'register', data: {...} }
     return res.data;
   } catch (err) {
     const msg = err.response?.data?.message || "کد اشتباه است.";
+    throw new ApiError("bad_request", typeof msg === "string" ? msg : JSON.stringify(msg));
+  }
+}
+
+export async function registerUser(payload) {
+  // payload = { temp_token, first_name, last_name, username, password, password2, email? }
+  try {
+    const res = await axiosClient.post("/auth/register/", payload);
+    return res.data;
+  } catch (err) {
+    const msg = err.response?.data?.message || "خطا در ثبت‌نام.";
     throw new ApiError("bad_request", typeof msg === "string" ? msg : JSON.stringify(msg));
   }
 }

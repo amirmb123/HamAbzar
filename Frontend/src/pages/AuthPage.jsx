@@ -2,6 +2,7 @@ import { useAuthFlow } from "../hooks/useAuthFlow";
 import BrandPanel from "../components/auth/BrandPanel";
 import PhoneStep from "../components/auth/PhoneStep";
 import OtpStep from "../components/auth/OtpStep";
+import RegisterStep from "../components/auth/RegisterStep";
 import SuccessStep from "../components/auth/SuccessStep";
 
 export default function AuthPage() {
@@ -16,6 +17,7 @@ export default function AuthPage() {
     errorMessage,
     submitPhone,
     submitOtp,
+    submitRegister,
     resendOtp,
     goBackToPhone,
   } = useAuthFlow();
@@ -45,6 +47,15 @@ export default function AuthPage() {
               onBack={goBackToPhone}
               onResend={resendOtp}
               secondsLeft={secondsLeft}
+              isSubmitting={isSubmitting}
+              errorMessage={errorMessage}
+            />
+          )}
+
+          {step === "register" && (
+            <RegisterStep
+              phone={phone}
+              onSubmit={submitRegister}
               isSubmitting={isSubmitting}
               errorMessage={errorMessage}
             />
