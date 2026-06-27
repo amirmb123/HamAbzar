@@ -31,10 +31,10 @@ export default function OtpStep({
     next[index] = digit;
     onOtpChange(next);
 
-    if (digit && index < 3) {
+    if (digit && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
-    if (next.every((d) => d) && next.join("").length === 4) {
+    if (next.every((d) => d) && next.join("").length === 6) {
       onSubmit(next.join(""));
     }
   };
@@ -63,7 +63,7 @@ export default function OtpStep({
       </div>
 
       <div className="mb-6 flex items-center justify-center gap-1.5 text-center text-sm text-gray-500">
-        کد ۴ رقمی به شماره{" "}
+        کد ۶ رقمی به شماره{" "}
         <strong dir="ltr" className="inline-block text-gray-900">
           {toPersianDigits(`0${phone}`)}
         </strong>
@@ -104,7 +104,7 @@ export default function OtpStep({
         size="lg"
         full
         className="mt-6"
-        disabled={otpDigits.some((d) => !d) || isSubmitting}
+        disabled={otpDigits.some((d) => !d) || otpDigits.length !== 6 || isSubmitting}
         onClick={() => onSubmit(otpDigits.join(""))}
       >
         {isSubmitting ? "در حال بررسی..." : "تأیید و ورود"}

@@ -10,7 +10,7 @@ const RESEND_SECONDS = 105; // ۱:۴۵ — مطابق طراحی
 export function useAuthFlow() {
   const [step, setStep] = useState("phone"); // phone | otp | success
   const [phone, setPhone] = useState("");
-  const [otpDigits, setOtpDigits] = useState(["", "", "", ""]);
+  const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]);
   const [secondsLeft, setSecondsLeft] = useState(RESEND_SECONDS);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
@@ -30,7 +30,7 @@ export function useAuthFlow() {
     setIsSubmitting(true);
     try {
       await requestOtp(phone);
-      setOtpDigits(["", "", "", ""]);
+      setOtpDigits(["", "", "", "", "", ""]);
       setStep("otp");
     } catch (err) {
       setErrorMessage(err.message || "ارسال کد ناموفق بود. دوباره تلاش کنید.");
@@ -55,7 +55,7 @@ export function useAuthFlow() {
 
   const resendOtp = async () => {
     if (secondsLeft > 0) return;
-    setOtpDigits(["", "", "", ""]);
+    setOtpDigits(["", "", "", "", "", ""]);
     await requestOtp(phone);
     setSecondsLeft(RESEND_SECONDS);
   };

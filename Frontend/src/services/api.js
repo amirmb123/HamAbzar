@@ -164,6 +164,7 @@ export async function fetchRelatedTools(id) {
   return mockRelatedTools.data;
 }
 
+// ✅ کد جدید — جایگزین کن:
 import axiosClient from "./axiosClient";
 
 export async function requestOtp(phone) {
