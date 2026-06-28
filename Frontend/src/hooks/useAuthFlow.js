@@ -1,13 +1,19 @@
+// src/hooks/useAuthFlow.js
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { requestOtp, verifyOtp, registerUser } from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 const RESEND_SECONDS = 105;
 
 export function useAuthFlow() {
-  const [step, setStep] = useState("phone"); // phone | otp | register | success
-  const [phone, setPhone] = useState("");
-  const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]);
-  const [tempToken, setTempToken] = useState(null);
+  const { login } = useAuth();
+  const navigate  = useNavigate();
+
+  const [step, setStep]             = useState("phone"); // phone | otp | register | success
+  const [phone, setPhone]           = useState("");
+  const [otpDigits, setOtpDigits]   = useState(["", "", "", "", "", ""]);
+  const [tempToken, setTempToken]   = useState(null);
   const [secondsLeft, setSecondsLeft] = useState(RESEND_SECONDS);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
@@ -44,12 +50,10 @@ export function useAuthFlow() {
       const res = await verifyOtp(phone, otpCode);
 
       if (res.next === "login") {
-        // کاربر قدیمی — توکن مستقیم دریافت شد
-        localStorage.setItem("access_token", res.data.access);
-        localStorage.setItem("refresh_token", res.data.refresh);
-        setStep("success");
+        // کاربر قدیمی — توکن + اطلاعات کاربر آماده‌ست
+        login(res.data.user, { access: res.data.access, refresh: res.data.refresh });
+        navigate("/", { replace: true });
       } else if (res.next === "register") {
-        // کاربر جدید — باید فرم ثبت‌نام پر کند
         setTempToken(res.data.temp_token);
         setStep("register");
       }
@@ -67,15 +71,15 @@ export function useAuthFlow() {
       const res = await registerUser({
         temp_token: tempToken,
         first_name: form.firstName,
-        last_name: form.lastName,
-        username: form.username,
-        password: form.password,
-        password2: form.password2,
-        email: form.email,
+        last_name:  form.lastName,
+        username:   form.username,
+        password:   form.password,
+        password2:  form.password2,
+        email:      form.email,
       });
-      localStorage.setItem("access_token", res.data.access);
-      localStorage.setItem("refresh_token", res.data.refresh);
-      setStep("success");
+      // کاربر جدید — توکن + اطلاعات کاربر آماده‌ست
+      login(res.data.user, { access: res.data.access, refresh: res.data.refresh });
+      navigate("/", { replace: true });
     } catch (err) {
       setErrorMessage(err.message || "خطا در ثبت‌نام. دوباره تلاش کنید.");
     } finally {

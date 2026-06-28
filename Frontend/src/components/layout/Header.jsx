@@ -1,10 +1,20 @@
-import { Link } from "react-router-dom";
+// src/components/layout/Header.jsx
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Header({ searchValue, onSearchChange }) {
+  const { user, loading, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
+
   return (
     <header className="sticky top-0 z-[100] flex h-16 items-center gap-4 border-b border-gray-200 bg-white px-6">
       {/* لوگو */}
-      <a href="#" className="flex min-w-fit items-center gap-2 text-[16px] font-semibold text-gray-900">
+      <a href="/" className="flex min-w-fit items-center gap-2 text-[16px] font-semibold text-gray-900">
         <div className="flex h-[34px] w-[34px] items-center justify-center rounded-md bg-primary-600 text-white">
           <i className="fa-solid fa-screwdriver-wrench" />
         </div>
@@ -48,13 +58,44 @@ export default function Header({ searchValue, onSearchChange }) {
           <i className="fa-regular fa-bell" />
           <span className="hidden sm:inline">اعلان‌ها</span>
         </button>
-        <Link
-          to="/auth"
-          className="flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-900 transition hover:bg-gray-50"
-        >
-          <i className="fa-regular fa-user" />
-          <span className="hidden sm:inline">ورود / ثبت‌نام</span>
-        </Link>
+
+        {/* بخش auth — اگه لود هست چیزی نشون نده تا flicker نزنه */}
+        {!loading && (
+          <>
+            {user ? (
+              // کاربر لاگین کرده
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/profile"
+                  className="flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-900 transition hover:bg-gray-50"
+                >
+                  <i className="fa-regular fa-user" />
+                  <span className="hidden sm:inline max-w-[100px] truncate">
+                    {user.full_name || user.username || user.phone}
+                  </span>
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-500 transition hover:bg-gray-50 hover:text-red-600"
+                  title="خروج"
+                >
+                  <i className="fa-solid fa-arrow-right-from-bracket" />
+                  <span className="hidden sm:inline">خروج</span>
+                </button>
+              </div>
+            ) : (
+              // کاربر لاگین نکرده
+              <Link
+                to="/auth"
+                className="flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-900 transition hover:bg-gray-50"
+              >
+                <i className="fa-regular fa-user" />
+                <span className="hidden sm:inline">ورود / ثبت‌نام</span>
+              </Link>
+            )}
+          </>
+        )}
+
         <Link
           to="/tools/new"
           className="flex items-center gap-2 rounded-md bg-primary-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-primary-700"
