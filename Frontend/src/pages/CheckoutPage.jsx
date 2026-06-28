@@ -20,8 +20,25 @@ export default function CheckoutPage() {
   const initialRange = location.state?.range || { start: null, end: null };
 
   const { tool, toolStatus, bookedDates } = useToolDetail(id);
-  const { currentStep, range, setRange, timeSlotId, setTimeSlotId, deliveryMethodId, setDeliveryMethodId, goToPaymentStep } =
-    useCheckoutFlow(initialRange);
+  const {
+    currentStep,
+    range,
+    setRange,
+    timeSlotId,
+    setTimeSlotId,
+    deliveryMethodId,
+    setDeliveryMethodId,
+    isSubmitting,
+    errorMessage,
+    goToPaymentStep,
+  } = useCheckoutFlow(id, initialRange);
+
+  const handleContinue = async () => {
+    const result = await goToPaymentStep();
+    if (result.success) {
+      navigate("/my-rentals");
+    }
+  };
 
   if (toolStatus === "error") {
     return (
@@ -82,7 +99,7 @@ export default function CheckoutPage() {
             <DeliveryOptions
               selectedMethod={deliveryMethodId}
               onSelect={setDeliveryMethodId}
-              ownerAddress={tool.address}
+              ownerAddress={tool.city?.name}
             />
           </div>
 
@@ -97,7 +114,9 @@ export default function CheckoutPage() {
             range={range}
             timeSlotId={timeSlotId}
             deliveryMethodId={deliveryMethodId}
-            onContinue={goToPaymentStep}
+            isSubmitting={isSubmitting}
+            errorMessage={errorMessage}
+            onContinue={handleContinue}
           />
         </div>
       </div>

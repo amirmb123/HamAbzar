@@ -135,23 +135,25 @@ export async function fetchToolAvailability(id, month) {
   }
 }
 
-/** GET /api/categories/ */
+/** GET /api/tools/categories/ */
 export async function fetchCategories() {
   try {
-    const res = await axiosClient.get("/categories/");
+    const res = await axiosClient.get("/tools/categories/");
     // بک‌اند: { status, data: [...] }
     return res.data.data;
   } catch (err) {
+    console.error("[fetchCategories] خطا در دریافت دسته‌بندی‌ها:", err);
     return []; // در صورت خطا لیست خالی
   }
 }
 
-/** GET /api/cities/ */
+/** GET /api/tools/cities/ */
 export async function fetchCities() {
   try {
-    const res = await axiosClient.get("/cities/");
+    const res = await axiosClient.get("/tools/cities/");
     return res.data.data;
   } catch (err) {
+    console.error("[fetchCities] خطا در دریافت شهرها:", err);
     return [];
   }
 }
@@ -461,10 +463,28 @@ export async function deleteAdminTool(toolId) {
   return { status: "success" };
 }
 
-/** کلاس خطای یکپارچه برای تشخیص نوع خطا در UI (مطابق mockErrors در mockData.js) */
+/**
+ * POST /api/rentals/
+ * @param {Object} payload - { tool_id, start_date, end_date } — تاریخ‌ها به فرمت YYYY-MM-DD
+ * @returns {Promise<Object>} - { status: "success", data: RentalDetail }
+ */
+export async function createRental(payload) {
+  try {
+    const res = await axiosClient.post("/rentals/", payload);
+    return res.data;
+  } catch (err) {
+    if (!err.response) throw new ApiError("network_error", "اتصال به سرور ممکن نیست.");
+    if (err.response.status === 409) {
+      throw new ApiError("date_conflict", err.response.data?.message || "این ابزار برای تاریخ‌های انتخاب‌شده رزرو شده است.");
+    }
+    const msg = err.response.data?.message;
+    const firstErr = typeof msg === "object" ? Object.values(msg).flat()[0] : msg;
+    throw new ApiError("bad_request", firstErr || "خطا در ثبت رزرو.");
+  }
+}
 export class ApiError extends Error {
   constructor(type, message) {
     super(message);
     this.type = type;
   }
-}
+}3

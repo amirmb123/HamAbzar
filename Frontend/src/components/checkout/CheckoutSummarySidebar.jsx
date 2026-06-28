@@ -16,9 +16,15 @@ function diffDays(startIso, endIso) {
   return Math.round((new Date(endIso) - new Date(startIso)) / (1000 * 60 * 60 * 24));
 }
 
-const PLATFORM_FEE_RATE = 0.1;
-
-export default function CheckoutSummarySidebar({ tool, range, timeSlotId, deliveryMethodId, onContinue }) {
+export default function CheckoutSummarySidebar({
+  tool,
+  range,
+  timeSlotId,
+  deliveryMethodId,
+  isSubmitting,
+  errorMessage,
+  onContinue,
+}) {
   const [promoCode, setPromoCode] = useState("");
 
   const days = range.start && range.end ? diffDays(range.start, range.end) : 0;
@@ -28,9 +34,11 @@ export default function CheckoutSummarySidebar({ tool, range, timeSlotId, delive
   const deliveryMethod = DELIVERY_METHODS.find((m) => m.id === deliveryMethodId) || DELIVERY_METHODS[0];
 
   const subtotal = days * tool.daily_price;
-  const deliveryFee = deliveryMethod.price;
-  const platformFee = Math.round(subtotal * PLATFORM_FEE_RATE);
-  const total = subtotal + deliveryFee + platformFee + tool.deposit_amount;
+  // ⚠️ موقتی: کارمزد پلتفرم و هزینه‌ی تحویل از محاسبه حذف شدند چون بک‌اند
+  // فعلاً هیچ فیلدی برایشان ندارد (RentalCreateView فقط daily_price × روز
+  // + deposit_amount را از کیف‌پول کسر می‌کند). وقتی این فیلدها به مدل
+  // اضافه شدند، این محاسبه باید با مقادیر واقعی پاسخ سرور هماهنگ شود.
+  const total = subtotal + tool.deposit_amount;
 
   return (
     <div className="sticky top-[88px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-md">
@@ -69,12 +77,8 @@ export default function CheckoutSummarySidebar({ tool, range, timeSlotId, delive
               <span>{formatPrice(subtotal)}</span>
             </div>
             <div className="flex items-center justify-between py-2 text-base text-gray-500">
-              <span>هزینه {deliveryMethod.title}</span>
-              <span>{deliveryFee === 0 ? "رایگان" : formatPrice(deliveryFee)}</span>
-            </div>
-            <div className="flex items-center justify-between py-2 text-base text-gray-500">
-              <span>کارمزد پلتفرم</span>
-              <span>{formatPrice(platformFee)}</span>
+              <span>روش تحویل</span>
+              <span>{deliveryMethod.title}</span>
             </div>
             <div className="flex items-center justify-between py-2 text-base text-gray-500">
               <span>ودیعه (بازگشتی)</span>
@@ -103,15 +107,19 @@ export default function CheckoutSummarySidebar({ tool, range, timeSlotId, delive
           <p className="py-3 text-sm text-gray-500">برای مشاهده مبلغ، بازه‌ی اجاره را از تقویم انتخاب کنید.</p>
         )}
 
+        {errorMessage && (
+          <p className="mt-3 rounded-md bg-danger-50 px-3 py-2 text-sm text-danger-600">{errorMessage}</p>
+        )}
+
         <Button
           full
           size="lg"
-          disabled={!hasValidRange}
+          disabled={!hasValidRange || isSubmitting}
           onClick={onContinue}
           className="mt-4 rounded-lg"
         >
-          ادامه به پرداخت
-          <i className="fa-solid fa-arrow-left" />
+          {isSubmitting ? "در حال ثبت رزرو..." : "ادامه به پرداخت"}
+          {!isSubmitting && <i className="fa-solid fa-arrow-left" />}
         </Button>
 
         <div className="mt-3 flex items-center justify-center gap-1.5 text-center text-xs text-gray-400">
