@@ -126,7 +126,7 @@ class ToolDetailSerializer(serializers.ModelSerializer):
         model  = Tool
         fields = [
             'id', 'name', 'description',
-            'category', 'city',
+            'category', 'city', 'address',
             'daily_price', 'deposit_amount',
             'is_available',
             'owner',
@@ -157,7 +157,7 @@ class ToolWriteSerializer(serializers.ModelSerializer):
             'name', 'description',
             'category', 'city',
             'daily_price', 'deposit_amount',
-            'latitude', 'longitude',
+            'latitude', 'longitude', 'address',
         ]
 
     def validate_latitude(self, value):
@@ -173,6 +173,9 @@ class ToolWriteSerializer(serializers.ModelSerializer):
                 "طول جغرافیایی باید بین ۱۸۰- و ۱۸۰ باشد."
             )
         return value
+
+    def validate_address(self, value):
+        return value.strip()
 
     def validate_daily_price(self, value):
         if value <= 0:
