@@ -1,73 +1,78 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import { useToolForm } from "../hooks/useToolForm";
-import { fetchCategories, fetchToolConditions } from "../services/api";
+import { fetchCategories, fetchCities } from "../services/api";
 
-import StepsSidebar from "../components/toolform/StepsSidebar";
 import CategorySelectGrid from "../components/toolform/CategorySelectGrid";
+import LocationPicker from "../components/toolform/LocationPicker";
 import FormField from "../components/common/FormField";
-import SpecsInputList from "../components/toolform/SpecsInputList";
 import ImageUploadGrid from "../components/toolform/ImageUploadGrid";
-import RentalSettingsToggles from "../components/toolform/RentalSettingsToggles";
 import TipBox from "../components/toolform/TipBox";
-import FormFooterBar from "../components/toolform/FormFooterBar";
-import { toPersianDigits } from "../utils/format";
+import Button from "../components/common/Button";
 
-const TOTAL_STEPS = 6;
+function SectionTitle({ icon, title, desc }) {
+  return (
+    <div className="mb-4 flex items-center gap-3">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary-50 text-primary-600">
+        <i className={icon} />
+      </div>
+      <div>
+        <h2 className="text-base font-bold text-gray-900">{title}</h2>
+        {desc && <p className="text-xs text-gray-500">{desc}</p>}
+      </div>
+    </div>
+  );
+}
 
 export default function ToolFormPage() {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+
   const {
-    currentStep,
-    goToPrevStep,
-    goToNextStep,
     isSubmitting,
-    isStepValid,
-    categoryId,
-    setCategoryId,
-    name,
-    setName,
-    brand,
-    setBrand,
-    model,
-    setModel,
-    description,
-    setDescription,
-    condition,
-    setCondition,
-    specs,
-    addSpecRow,
-    removeSpecRow,
-    updateSpecRow,
-    images,
-    addImage,
-    removeImage,
-    fastDelivery,
-    setFastDelivery,
-    manualApproval,
-    setManualApproval,
-    hourlyRental,
-    setHourlyRental,
-    minDescriptionLength,
+    submitError,
+    isFormValid,
+    submit,
+
+    categoryId, setCategoryId,
+    cityId, setCityId,
+
+    name, setName,
+    description, setDescription,
+
+    images, addImage, removeImage,
+
+    dailyPrice, setDailyPrice,
+    depositAmount, setDepositAmount,
+
+    latitude,
+    longitude,
+    address, setAddress,
+    setLocation,
+
     minImages,
+    maxImages,
   } = useToolForm();
 
   const [categories, setCategories] = useState([]);
-  const [conditions, setConditions] = useState([]);
+  const [cities, setCities] = useState([]);
 
   useEffect(() => {
     fetchCategories().then(setCategories);
-    fetchToolConditions().then(setConditions);
+    fetchCities().then(setCities);
   }, []);
 
-  const handleNext = async () => {
-    // ⚠️ فقط مرحله‌ی ۲ (اطلاعات پایه) در این نسخه پیاده‌سازی شده. مراحل
-    // ۱ و ۳ تا ۶ هنوز صفحه ندارند، پس به‌جای واقعاً جلو رفتن در stepper،
-    // داده‌ی این مرحله را ذخیره (mock) می‌کنیم و کاربر را به کرایه‌های من
-    // برمی‌گردانیم. وقتی بقیه‌ی مراحل ساخته شدند، این تابع باید
-    // goToNextStep() واقعی را صدا بزند تا در stepper جلو برود.
-    const result = await goToNextStep();
-    if (result?.published) {
+  // ساخت ابزار نیاز به احراز هویت دارد (POST /api/tools/ → IsAuthenticated)
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/auth");
+    }
+  }, [authLoading, user, navigate]);
+
+  const handleSubmit = async () => {
+    const result = await submit();
+    if (result.success) {
       navigate("/my-rentals");
     }
   };
@@ -91,142 +96,129 @@ export default function ToolFormPage() {
         </Link>
       </header>
 
-      <div className="flex">
-        <StepsSidebar currentStep={currentStep} />
+      <div className="mx-auto max-w-[720px] px-6 py-8">
+        <h1 className="mb-1 text-xl font-bold text-gray-900">اطلاعات ابزار</h1>
+        <p className="mb-8 text-base text-gray-500">
+          اطلاعات دقیق و کامل به اجاره سریع‌تر ابزار شما کمک می‌کند
+        </p>
 
-        <div className="mx-auto max-w-[720px] flex-1 px-6 py-8">
-          <h1 className="mb-1 text-xl font-bold text-gray-900">اطلاعات پایه ابزار</h1>
-          <p className="mb-8 text-base text-gray-500">
-            اطلاعات دقیق به اجاره سریع‌تر ابزار شما کمک می‌کند
-          </p>
+        {/* دسته‌بندی */}
+        <SectionTitle icon="fa-solid fa-shapes" title="دسته‌بندی ابزار" />
+        <div className="mb-4">
+          <CategorySelectGrid categories={categories} selectedId={categoryId} onSelect={setCategoryId} />
+        </div>
 
-          {/* دسته‌بندی */}
-          <div className="mb-4">
-            <label className="mb-2 block text-sm font-medium text-gray-900">
-              دسته‌بندی ابزار <span className="text-danger-600">*</span>
-            </label>
-            <CategorySelectGrid categories={categories} selectedId={categoryId} onSelect={setCategoryId} />
-          </div>
+        <div className="my-8 h-px bg-gray-100" />
 
-          <div className="my-6 h-px bg-gray-100" />
+        {/* اطلاعات پایه */}
+        <SectionTitle icon="fa-solid fa-circle-info" title="اطلاعات پایه" />
 
-          {/* نام */}
-          <FormField
-            label="نام ابزار"
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="مثال: دریل بوش ۱۶ میلی ضربه‌ای"
-            hint="نام واضح و شامل برند و مدل وارد کنید"
-          />
+        <FormField
+          label="نام ابزار"
+          required
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="مثال: دریل بوش ۱۶ میلی ضربه‌ای"
+          hint="نام واضح و شامل برند و مدل وارد کنید"
+        />
 
-          {/* برند / مدل */}
-          <div className="mb-4 flex gap-4">
-            <div className="flex-1">
-              <FormField
-                label="برند"
-                value={brand}
-                onChange={(e) => setBrand(e.target.value)}
-                placeholder="مثال: بوش، مکیتا، دیوالت"
-              />
-            </div>
-            <div className="flex-1">
-              <FormField
-                label="مدل"
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-                placeholder="مثال: GSB 16 RE"
-              />
-            </div>
-          </div>
+        <FormField
+          as="textarea"
+          label="توضیحات"
+          rows={5}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="ابزار را با جزئیات توصیف کنید: وضعیت ظاهری، متعلقات همراه، نحوه استفاده و..."
+        />
 
-          {/* توضیحات */}
-          <FormField
-            as="textarea"
-            label="توضیحات"
-            required
-            rows={5}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="ابزار را با جزئیات توصیف کنید: وضعیت ظاهری، متعلقات همراه، نحوه استفاده و..."
-            hint={`حداقل ${toPersianDigits(minDescriptionLength)} کاراکتر — در حال حاضر: ${toPersianDigits(
-              description.length
-            )} کاراکتر`}
-          />
+        <TipBox>
+          آگهی‌هایی که توضیحات کامل دارند، تا ۳ برابر سریع‌تر رزرو می‌شوند.
+        </TipBox>
 
-          {/* وضعیت */}
-          <FormField
-            as="select"
-            label="وضعیت ابزار"
-            required
-            value={condition}
-            onChange={(e) => setCondition(e.target.value)}
-          >
-            <option value="">انتخاب کنید</option>
-            {conditions.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </FormField>
+        <div className="my-8 h-px bg-gray-100" />
 
-          <div className="my-6 h-px bg-gray-100" />
+        {/* تصاویر */}
+        <SectionTitle icon="fa-solid fa-images" title="تصاویر ابزار" />
+        <div className="mb-4">
+          <ImageUploadGrid images={images} onAdd={addImage} onRemove={removeImage} minImages={minImages} maxImages={maxImages} />
+        </div>
 
-          {/* مشخصات فنی */}
-          <div className="mb-2">
-            <label className="mb-2 block text-sm font-medium text-gray-900">مشخصات فنی (اختیاری)</label>
-            <SpecsInputList
-              specs={specs}
-              onUpdate={updateSpecRow}
-              onAdd={addSpecRow}
-              onRemove={removeSpecRow}
+        <div className="my-8 h-px bg-gray-100" />
+
+        {/* قیمت و ودیعه */}
+        <SectionTitle icon="fa-solid fa-tag" title="قیمت اجاره" />
+        <div className="mb-4 flex gap-4">
+          <div className="flex-1">
+            <FormField
+              label="قیمت روزانه (تومان)"
+              required
+              type="number"
+              min="1"
+              value={dailyPrice}
+              onChange={(e) => setDailyPrice(e.target.value)}
+              placeholder="مثال: ۱۵۰۰۰۰"
             />
           </div>
-
-          <TipBox>
-            آگهی‌هایی که توضیحات کامل و مشخصات فنی دقیق دارند، تا ۳ برابر سریع‌تر رزرو می‌شوند.
-          </TipBox>
-
-          <div className="my-6 h-px bg-gray-100" />
-
-          {/* تصاویر */}
-          <div className="mb-4">
-            <label className="mb-2 block text-sm font-medium text-gray-900">
-              تصاویر ابزار <span className="text-danger-600">*</span>
-            </label>
-            <ImageUploadGrid
-              images={images}
-              onAdd={addImage}
-              onRemove={removeImage}
-              minImages={minImages}
-            />
-          </div>
-
-          <div className="my-6 h-px bg-gray-100" />
-
-          {/* تنظیمات اجاره */}
-          <div className="mb-4">
-            <label className="mb-2 block text-sm font-medium text-gray-900">تنظیمات اجاره</label>
-            <RentalSettingsToggles
-              fastDelivery={fastDelivery}
-              onFastDeliveryChange={setFastDelivery}
-              manualApproval={manualApproval}
-              onManualApprovalChange={setManualApproval}
-              hourlyRental={hourlyRental}
-              onHourlyRentalChange={setHourlyRental}
+          <div className="flex-1">
+            <FormField
+              label="مبلغ ودیعه (تومان)"
+              type="number"
+              min="0"
+              value={depositAmount}
+              onChange={(e) => setDepositAmount(e.target.value)}
+              placeholder="اختیاری — مثال: ۵۰۰۰۰۰"
             />
           </div>
         </div>
+
+        <div className="my-8 h-px bg-gray-100" />
+
+        {/* موقعیت مکانی */}
+        <SectionTitle icon="fa-solid fa-location-dot" title="موقعیت مکانی" desc="محل تحویل ابزار" />
+
+        <FormField
+          as="select"
+          label="شهر"
+          required
+          value={cityId ?? ""}
+          onChange={(e) => setCityId(Number(e.target.value) || null)}
+        >
+          <option value="">انتخاب کنید</option>
+          {cities.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </FormField>
+
+        <FormField
+          label="آدرس"
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          placeholder="اختیاری — مثال: خیابان ولیعصر، نرسیده به میدان ونک"
+        />
+
+        <div className="mb-4">
+          <label className="mb-2 block text-sm font-medium text-gray-900">
+            موقعیت روی نقشه <span className="text-danger-600">*</span>
+          </label>
+          <LocationPicker latitude={latitude} longitude={longitude} onChange={setLocation} />
+        </div>
+
+        {submitError && (
+          <div className="mb-4 flex items-center gap-2 rounded-md bg-danger-50 px-4 py-3 text-sm text-danger-600">
+            <i className="fa-solid fa-circle-exclamation" />
+            {submitError}
+          </div>
+        )}
       </div>
 
-      <FormFooterBar
-        currentStep={currentStep}
-        totalSteps={TOTAL_STEPS}
-        onPrev={goToPrevStep}
-        onNext={handleNext}
-        isSubmitting={isSubmitting}
-        isNextDisabled={!isStepValid}
-      />
+      <div className="sticky bottom-0 mt-8 flex items-center justify-end border-t border-gray-200 bg-white px-6 py-4">
+        <Button onClick={handleSubmit} disabled={isSubmitting || !isFormValid} size="lg">
+          {isSubmitting ? "در حال ثبت..." : "ثبت"}
+          {!isSubmitting && <i className="fa-solid fa-check" />}
+        </Button>
+      </div>
     </div>
   );
 }

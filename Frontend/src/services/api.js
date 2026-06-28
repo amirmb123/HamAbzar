@@ -22,7 +22,6 @@ import {
   mockConversations,
   mockConversationMessages,
   mockReviewTags,
-  TOOL_CONDITIONS,
   mockAdminKpis,
   mockRentalTrend,
   mockPendingApprovals,
@@ -352,29 +351,24 @@ export async function submitReview(rentalId, payload) {
   return { status: "success" };
 }
 
-/** GET /api/tools/conditions/ (یا یک enum ثابت سمت فرانت) */
-export async function fetchToolConditions() {
-  await delay(150);
-  return TOOL_CONDITIONS;
-}
-
 /**
  * POST /api/tools/
- * @param {Object} payload - { category_id, name, brand, model, description,
- *   condition, specs, images, delivery_options, daily_price, deposit_amount,
- *   city_id, address }
+ * مطابق ToolWriteSerializer سمت بک‌اند:
+ * @param {Object} payload - { category, city, name, description,
+ *   daily_price, deposit_amount, latitude, longitude, address, images }
  */
 export async function createTool(payload) {
   // مرحله ۱: ثبت ابزار (بدون تصویر)
   const toolPayload = {
     name:           payload.name,
     description:    payload.description,
-    category:       payload.category_id,
-    city:           payload.city_id,
+    category:       payload.category,
+    city:           payload.city,
     daily_price:    payload.daily_price,
     deposit_amount: payload.deposit_amount || 0,
     latitude:       payload.latitude,
     longitude:      payload.longitude,
+    address:        payload.address || "",
   };
 
   let toolRes;

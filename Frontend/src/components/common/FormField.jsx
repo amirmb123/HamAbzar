@@ -22,12 +22,14 @@ export default function FormField({
         </label>
       )}
 
-      {children ? (
-        children
-      ) : as === "textarea" ? (
+      {as === "textarea" ? (
         <textarea className={`${baseInputClass} min-h-[100px] resize-y`} {...inputProps} />
       ) : as === "select" ? (
-        <select className={baseInputClass} {...inputProps} />
+        <select className={baseInputClass} {...inputProps}>
+          {children}
+        </select>
+      ) : children ? (
+        children
       ) : (
         <input className={baseInputClass} {...inputProps} />
       )}
