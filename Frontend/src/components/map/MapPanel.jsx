@@ -1,26 +1,50 @@
-import { useMemo } from "react";
+// src/components/map/MapPanel.jsx
+import { useEffect, useMemo, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import { createPriceIcon } from "./PriceMarkerIcon";
 import { toPersianDigits, formatPrice } from "../../utils/format";
 
 const DEFAULT_CENTER = [35.6892, 51.389]; // تهران
 
-/** هر بار که tools عوض میشه (مثلاً تغییر فیلتر)، نقشه روی مارکرها fit میشه */
 function FitToMarkers({ tools }) {
   const map = useMap();
-
   useMemo(() => {
     if (tools.length === 0) return;
     const bounds = tools.map((t) => [t.coordinates.lat, t.coordinates.lng]);
     map.fitBounds(bounds, { padding: [60, 60], maxZoom: 14 });
   }, [tools, map]);
-
   return null;
 }
 
-export default function MapPanel({ tools, hoveredToolId, onHoverTool, onSelectTool }) {
+/**
+ * وقتی MapPanel از hidden به visible تغییر می‌کنه،
+ * Leaflet باید ابعاد کانتینر رو دوباره حساب کنه.
+ * بدون این، نقشه فقط یه گوشه لود می‌شه و بقیه سفیده.
+ */
+function MapResizeHandler({ visible }) {
+  const map = useMap();
+  useEffect(() => {
+    if (visible) {
+      // یه tick صبر می‌کنیم تا DOM آپدیت شه، بعد invalidate
+      const t = setTimeout(() => map.invalidateSize(), 0);
+      return () => clearTimeout(t);
+    }
+  }, [visible, map]);
+  return null;
+}
+
+export default function MapPanel({ tools, hoveredToolId, onHoverTool, onSelectTool, visible, desktopVisible = true }) {
+  // موبایل: visible کنترل میکنه | دسکتاپ: desktopVisible کنترل میکنه
+  const mobileClass  = visible  ? "flex"   : "hidden";
+  const desktopClass = desktopVisible ? "lg:flex" : "lg:hidden";
+
   return (
-    <div className="relative hidden flex-1 overflow-hidden lg:block">
+    <div
+      className={`
+        relative flex-1 overflow-hidden
+        ${mobileClass} ${desktopClass}
+      `}
+    >
       <MapContainer
         center={DEFAULT_CENTER}
         zoom={12}
@@ -32,6 +56,9 @@ export default function MapPanel({ tools, hoveredToolId, onHoverTool, onSelectTo
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
+        {/* رفع باگ سفید موبایل — باید داخل MapContainer باشه */}
+        <MapResizeHandler visible={visible} />
+
         <FitToMarkers tools={tools} />
 
         {tools.map((tool) => (
@@ -41,8 +68,8 @@ export default function MapPanel({ tools, hoveredToolId, onHoverTool, onSelectTo
             icon={createPriceIcon(tool.daily_price, hoveredToolId === tool.id)}
             eventHandlers={{
               mouseover: () => onHoverTool?.(tool.id),
-              mouseout: () => onHoverTool?.(null),
-              click: () => onSelectTool?.(tool),
+              mouseout:  () => onHoverTool?.(null),
+              click:     () => onSelectTool?.(tool),
             }}
           >
             <Popup>
