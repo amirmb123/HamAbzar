@@ -5,33 +5,43 @@ const MIN_DESCRIPTION_LENGTH = 50;
 const MIN_IMAGES = 3;
 
 export function useToolForm() {
-  const [currentStep, setCurrentStep] = useState(2); // طبق طراحی، نمونه از مرحله ۲ شروع می‌شود
+  const [currentStep, setCurrentStep] = useState(2);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // اطلاعات پایه (مرحله ۲)
   const [categoryId, setCategoryId] = useState(null);
-  const [name, setName] = useState("");
-  const [brand, setBrand] = useState("");
-  const [model, setModel] = useState("");
+  const [name, setName]             = useState("");
+  const [brand, setBrand]           = useState("");
+  const [model, setModel]           = useState("");
   const [description, setDescription] = useState("");
-  const [condition, setCondition] = useState("");
-  const [specs, setSpecs] = useState([{ label: "", value: "" }]);
+  const [condition, setCondition]   = useState("");
+  const [specs, setSpecs]           = useState([{ label: "", value: "" }]);
 
-  // تصاویر (پیش‌نمایش مرحله ۳، در همین صفحه نمایش داده می‌شود طبق طراحی)
+  // تصاویر — File objects (از input type=file)
   const [images, setImages] = useState([]);
 
-  // تنظیمات اجاره
-  const [fastDelivery, setFastDelivery] = useState(true);
-  const [manualApproval, setManualApproval] = useState(false);
-  const [hourlyRental, setHourlyRental] = useState(false);
+  // قیمت و ودیعه (مرحله ۴)
+  const [dailyPrice, setDailyPrice]       = useState("");
+  const [depositAmount, setDepositAmount] = useState("");
 
-  const addSpecRow = () => setSpecs((prev) => [...prev, { label: "", value: "" }]);
+  // موقعیت (مرحله ۵)
+  const [cityId, setCityId]       = useState(null);
+  const [latitude, setLatitude]   = useState("");
+  const [longitude, setLongitude] = useState("");
+  const [address, setAddress]     = useState("");
+
+  // تنظیمات اجاره
+  const [fastDelivery, setFastDelivery]     = useState(true);
+  const [manualApproval, setManualApproval] = useState(false);
+  const [hourlyRental, setHourlyRental]     = useState(false);
+
+  const addSpecRow    = () => setSpecs((prev) => [...prev, { label: "", value: "" }]);
   const removeSpecRow = (idx) => setSpecs((prev) => prev.filter((_, i) => i !== idx));
   const updateSpecRow = (idx, field, value) => {
     setSpecs((prev) => prev.map((row, i) => (i === idx ? { ...row, [field]: value } : row)));
   };
 
-  const addImage = (url) => setImages((prev) => [...prev, url]);
+  const addImage    = (file) => setImages((prev) => [...prev, file]);
   const removeImage = (idx) => setImages((prev) => prev.filter((_, i) => i !== idx));
 
   const isStepValid =
@@ -48,21 +58,20 @@ export function useToolForm() {
       setCurrentStep((s) => s + 1);
       return;
     }
-    // مرحله‌ی نهایی: انتشار آگهی
     setIsSubmitting(true);
     try {
       await createTool({
-        category_id: categoryId,
+        category_id:    categoryId,
         name,
-        brand,
-        model,
         description,
-        condition,
-        specs: specs.filter((s) => s.label && s.value),
+        // فیلدهای اضافه (فعلاً در توضیحات ادغام میشن تا بک‌اند پشتیبانی کنه)
+        // brand, model, condition, specs در نسخه بعد به مدل اضافه می‌شن
+        daily_price:    Number(dailyPrice)    || 0,
+        deposit_amount: Number(depositAmount) || 0,
+        city_id:        cityId,
+        latitude:       latitude  || "35.6892",   // fallback: تهران
+        longitude:      longitude || "51.3890",
         images,
-        fast_delivery: fastDelivery,
-        manual_approval: manualApproval,
-        hourly_rental: hourlyRental,
       });
       return { published: true };
     } finally {
@@ -76,31 +85,29 @@ export function useToolForm() {
     goToNextStep,
     isSubmitting,
     isStepValid,
-    categoryId,
-    setCategoryId,
-    name,
-    setName,
-    brand,
-    setBrand,
-    model,
-    setModel,
-    description,
-    setDescription,
-    condition,
-    setCondition,
-    specs,
-    addSpecRow,
-    removeSpecRow,
-    updateSpecRow,
-    images,
-    addImage,
-    removeImage,
-    fastDelivery,
-    setFastDelivery,
-    manualApproval,
-    setManualApproval,
-    hourlyRental,
-    setHourlyRental,
+    // مرحله ۲
+    categoryId, setCategoryId,
+    name, setName,
+    brand, setBrand,
+    model, setModel,
+    description, setDescription,
+    condition, setCondition,
+    specs, addSpecRow, removeSpecRow, updateSpecRow,
+    // مرحله ۳
+    images, addImage, removeImage,
+    // مرحله ۴
+    dailyPrice, setDailyPrice,
+    depositAmount, setDepositAmount,
+    // مرحله ۵
+    cityId, setCityId,
+    latitude, setLatitude,
+    longitude, setLongitude,
+    address, setAddress,
+    // تنظیمات
+    fastDelivery, setFastDelivery,
+    manualApproval, setManualApproval,
+    hourlyRental, setHourlyRental,
+    // ثابت‌ها
     minDescriptionLength: MIN_DESCRIPTION_LENGTH,
     minImages: MIN_IMAGES,
   };

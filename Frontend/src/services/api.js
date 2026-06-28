@@ -68,62 +68,55 @@ function deriveCoordinates(tool) {
  * @returns {Promise<{count:number, next:string|null, previous:string|null, results:Array}>}
  */
 export async function fetchTools(params = {}) {
-  await delay();
+  // ترجمه نام پارامترها به آنچه بک‌اند انتظار دارد
+  const apiParams = {};
+  if (params.category_id) apiParams.category = params.category_id;
+  if (params.city_id)     apiParams.city     = params.city_id;
+  if (params.search)      apiParams.search   = params.search;
+  if (params.ordering)    apiParams.ordering = params.ordering;
+  if (params.price_max)   apiParams.price_max = params.price_max;
+  if (params.lat)         apiParams.lat      = params.lat;
+  if (params.lng)         apiParams.lng      = params.lng;
 
-  let results = [...mockTools.results];
-
-  if (params.category_id) {
-    results = results.filter((t) => t.category.id === Number(params.category_id));
+  try {
+    const res = await axiosClient.get("/tools/", { params: apiParams });
+    // بک‌اند: { count, next, previous, results: [...] }
+    const results = (res.data.results || []).map((t) => ({
+      ...t,
+      coordinates: t.latitude && t.longitude
+        ? { lat: parseFloat(t.latitude), lng: parseFloat(t.longitude) }
+        : deriveCoordinates(t),
+    }));
+    return { count: res.data.count, next: res.data.next, previous: res.data.previous, results };
+  } catch (err) {
+    if (!err.response) throw new ApiError("network_error", "اتصال به سرور ممکن نیست.");
+    throw new ApiError("server_error", "خطا در دریافت لیست ابزارها.");
   }
-  if (params.city_id) {
-    results = results.filter((t) => t.city.id === Number(params.city_id));
-  }
-  if (params.search) {
-    const q = params.search.trim().toLowerCase();
-    results = results.filter((t) => t.name.toLowerCase().includes(q));
-  }
-  if (params.only_available) {
-    results = results.filter((t) => t.is_available);
-  }
-
-  switch (params.ordering) {
-    case "price_asc":
-      results.sort((a, b) => a.daily_price - b.daily_price);
-      break;
-    case "price_desc":
-      results.sort((a, b) => b.daily_price - a.daily_price);
-      break;
-    case "rating":
-      results.sort((a, b) => b.owner.rating - a.owner.rating);
-      break;
-    case "distance":
-      results.sort((a, b) => a.distance_km - b.distance_km);
-      break;
-    default:
-      break; // جدیدترین: همون ترتیب پیش‌فرض mock
-  }
-
-  // اضافه کردن کوردینیت موقت برای نقشه (توضیح بالا)
-  results = results.map((t) => ({ ...t, coordinates: deriveCoordinates(t) }));
-
-  return {
-    count: results.length,
-    next: null,
-    previous: null,
-    results,
-  };
 }
 
 /**
  * GET /api/tools/<id>/
- * @param {number} id
+ *
+ * اگر id == 1 باشه داده‌ی کامل mockToolDetail برگردانده می‌شه.
+ * برای بقیه id ها، از mockTools یه detail واقعی ساخته می‌شه
+ * تا همه‌ی آگهی‌ها قابل کلیک باشن (تا وقتی API واقعی وصل بشه).
  */
 export async function fetchToolDetail(id) {
-  await delay();
-  if (Number(id) !== mockToolDetail.data.id) {
-    throw new ApiError("not_found", "مورد مورد نظر یافت نشد.");
+  try {
+    const res = await axiosClient.get(`/tools/${id}/`);
+    // بک‌اند: { status: "success", data: {...} }
+    const tool = res.data.data;
+    return {
+      ...tool,
+      coordinates: tool.latitude && tool.longitude
+        ? { lat: parseFloat(tool.latitude), lng: parseFloat(tool.longitude) }
+        : deriveCoordinates(tool),
+    };
+  } catch (err) {
+    if (!err.response) throw new ApiError("network_error", "اتصال به سرور ممکن نیست.");
+    if (err.response.status === 404) throw new ApiError("not_found", "ابزار مورد نظر یافت نشد.");
+    throw new ApiError("server_error", "خطا در دریافت اطلاعات ابزار.");
   }
-  return mockToolDetail.data;
 }
 
 /**
@@ -132,20 +125,37 @@ export async function fetchToolDetail(id) {
  * @param {string} month
  */
 export async function fetchToolAvailability(id, month) {
-  await delay(250);
-  return mockAvailability.data;
+  try {
+    const res = await axiosClient.get(`/tools/${id}/availability/`, {
+      params: month ? { month } : {},
+    });
+    // بک‌اند: { status, data: { booked_dates: [...] } }
+    return res.data.data;
+  } catch (err) {
+    if (!err.response) throw new ApiError("network_error", "اتصال به سرور ممکن نیست.");
+    return { booked_dates: [] }; // در صورت خطا تقویم خالی نشون بده
+  }
 }
 
 /** GET /api/categories/ */
 export async function fetchCategories() {
-  await delay(200);
-  return mockCategories;
+  try {
+    const res = await axiosClient.get("/categories/");
+    // بک‌اند: { status, data: [...] }
+    return res.data.data;
+  } catch (err) {
+    return []; // در صورت خطا لیست خالی
+  }
 }
 
 /** GET /api/cities/ */
 export async function fetchCities() {
-  await delay(200);
-  return mockCities;
+  try {
+    const res = await axiosClient.get("/cities/");
+    return res.data.data;
+  } catch (err) {
+    return [];
+  }
 }
 
 /**
@@ -153,6 +163,7 @@ export async function fetchCities() {
  * @param {number} id
  */
 export async function fetchToolReviews(id) {
+  // ⚠️ بک‌اند هنوز GET /api/tools/<id>/reviews/ ندارد — فعلاً mock
   await delay(300);
   return mockToolReviews.data;
 }
@@ -162,6 +173,7 @@ export async function fetchToolReviews(id) {
  * @param {number} id
  */
 export async function fetchRelatedTools(id) {
+  // ⚠️ بک‌اند هنوز GET /api/tools/<id>/related/ ندارد — فعلاً mock
   await delay(300);
   return mockRelatedTools.data;
 }
@@ -304,9 +316,47 @@ export async function fetchToolConditions() {
  *   city_id, address }
  */
 export async function createTool(payload) {
-  await delay(600);
-  console.log("[mock] ثبت ابزار جدید:", payload);
-  return { status: "success", data: { id: Math.floor(Math.random() * 1000) + 100 } };
+  // مرحله ۱: ثبت ابزار (بدون تصویر)
+  const toolPayload = {
+    name:           payload.name,
+    description:    payload.description,
+    category:       payload.category_id,
+    city:           payload.city_id,
+    daily_price:    payload.daily_price,
+    deposit_amount: payload.deposit_amount || 0,
+    latitude:       payload.latitude,
+    longitude:      payload.longitude,
+  };
+
+  let toolRes;
+  try {
+    toolRes = await axiosClient.post("/tools/", toolPayload);
+  } catch (err) {
+    if (!err.response) throw new ApiError("network_error", "اتصال به سرور ممکن نیست.");
+    const msg = err.response?.data?.message;
+    const firstErr = typeof msg === "object" ? Object.values(msg).flat()[0] : msg;
+    throw new ApiError("bad_request", firstErr || "خطا در ثبت ابزار.");
+  }
+
+  const toolId = toolRes.data.data.id;
+
+  // مرحله ۲: آپلود تصاویر (اگر وجود داشت)
+  if (payload.images && payload.images.length > 0) {
+    for (const file of payload.images) {
+      if (!(file instanceof File)) continue;
+      const form = new FormData();
+      form.append("image", file);
+      try {
+        await axiosClient.post(`/tools/${toolId}/images/`, form, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      } catch (e) {
+        console.warn("[createTool] آپلود تصویر ناموفق:", e);
+      }
+    }
+  }
+
+  return { status: "success", data: { id: toolId } };
 }
 
 /**
