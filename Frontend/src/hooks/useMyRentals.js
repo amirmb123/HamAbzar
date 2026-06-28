@@ -1,5 +1,12 @@
 import { useEffect, useState, useCallback } from "react";
-import { fetchMyRentals, fetchMyToolRentals } from "../services/api";
+import {
+  fetchMyRentals,
+  fetchMyToolRentals,
+  confirmRental,
+  handoverRental,
+  returnRental,
+  cancelRental,
+} from "../services/api";
 
 export function useMyRentals() {
   const [role, setRole] = useState("borrowed"); // borrowed | lent
@@ -8,10 +15,11 @@ export function useMyRentals() {
   const [borrowedRentals, setBorrowedRentals] = useState([]);
   const [lentRentals, setLentRentals] = useState([]);
   const [status, setStatus] = useState("loading"); // loading | success | error
+  const [actionError, setActionError] = useState(null);
 
   const loadAll = useCallback(() => {
     setStatus("loading");
-    Promise.all([fetchMyRentals(null), fetchMyToolRentals(null)])
+    Promise.all([fetchMyRentals(), fetchMyToolRentals()])
       .then(([borrowed, lent]) => {
         setBorrowedRentals(borrowed);
         setLentRentals(lent);
@@ -27,6 +35,27 @@ export function useMyRentals() {
   const activeList = role === "borrowed" ? borrowedRentals : lentRentals;
   const filteredList = statusFilter ? activeList.filter((r) => r.status === statusFilter) : activeList;
 
+  /** اجرای یک اکشن روی رزرو (confirm/cancel/handover/return) و رفرش لیست بعد از موفقیت */
+  const runAction = useCallback(
+    async (actionFn, rentalId) => {
+      setActionError(null);
+      try {
+        await actionFn(rentalId);
+        loadAll();
+        return true;
+      } catch (err) {
+        setActionError(err.message || "خطایی رخ داد.");
+        return false;
+      }
+    },
+    [loadAll]
+  );
+
+  const confirm   = (rentalId) => runAction(confirmRental, rentalId);
+  const handover  = (rentalId) => runAction(handoverRental, rentalId);
+  const markReturned = (rentalId) => runAction(returnRental, rentalId);
+  const cancel    = (rentalId) => runAction(cancelRental, rentalId);
+
   return {
     role,
     setRole,
@@ -37,5 +66,10 @@ export function useMyRentals() {
     lentCount: lentRentals.length,
     status,
     refetch: loadAll,
+    actionError,
+    confirm,
+    handover,
+    markReturned,
+    cancel,
   };
 }

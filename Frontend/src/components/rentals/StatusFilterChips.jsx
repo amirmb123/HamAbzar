@@ -1,8 +1,10 @@
 const STATUS_FILTERS = [
   { value: null, label: "همه" },
   { value: "pending", label: "در انتظار تأیید" },
+  { value: "confirmed", label: "تأیید شده" },
   { value: "active", label: "فعال" },
   { value: "returned", label: "تکمیل‌شده" },
+  { value: "disputed", label: "در حال بررسی" },
   { value: "cancelled", label: "لغوشده" },
 ];
 

@@ -23,7 +23,7 @@ function formatDateRange(startIso, endIso) {
 }
 
 /** اکشن‌های متفاوت بر اساس وضعیت رزرو و نقش کاربر (گرفته/داده) */
-function RentalActions({ rental, role, onCancel, onMarkReturned, onPayPenalty }) {
+function RentalActions({ rental, role, onCancel, onConfirm, onHandover, onMarkReturned }) {
   const { status } = rental;
 
   if (status === "pending" && role === "borrowed") {
@@ -44,11 +44,29 @@ function RentalActions({ rental, role, onCancel, onMarkReturned, onPayPenalty })
   if (status === "pending" && role === "lent") {
     return (
       <>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" onClick={() => onCancel?.(rental)}>
           رد درخواست
         </Button>
-        <Button size="sm">تأیید رزرو</Button>
+        <Button size="sm" onClick={() => onConfirm?.(rental)}>
+          تأیید رزرو
+        </Button>
       </>
+    );
+  }
+
+  if (status === "confirmed" && role === "lent") {
+    return (
+      <Button size="sm" onClick={() => onHandover?.(rental)}>
+        ثبت تحویل ابزار
+      </Button>
+    );
+  }
+
+  if (status === "confirmed") {
+    return (
+      <Link to="/chat">
+        <Button size="sm">چت با صاحب</Button>
+      </Link>
     );
   }
 
@@ -65,14 +83,6 @@ function RentalActions({ rental, role, onCancel, onMarkReturned, onPayPenalty })
       <Link to="/chat">
         <Button size="sm">چت با صاحب</Button>
       </Link>
-    );
-  }
-
-  if (status === "overdue") {
-    return (
-      <Button variant="danger" size="sm" onClick={() => onPayPenalty?.(rental)}>
-        پرداخت جریمه
-      </Button>
     );
   }
 
@@ -95,6 +105,14 @@ function RentalActions({ rental, role, onCancel, onMarkReturned, onPayPenalty })
     );
   }
 
+  if (status === "disputed") {
+    return (
+      <Button variant="ghost" size="sm">
+        جزئیات شکایت
+      </Button>
+    );
+  }
+
   if (status === "cancelled") {
     return (
       <Button variant="ghost" size="sm">
@@ -106,19 +124,21 @@ function RentalActions({ rental, role, onCancel, onMarkReturned, onPayPenalty })
   return null;
 }
 
-export default function RentalCard({ rental, role, onCancel, onMarkReturned, onPayPenalty }) {
-  const { tool, owner, borrower, status, total_price, booking_code } = rental;
-  const counterparty = role === "borrowed" ? owner : borrower;
-  const counterpartyLabel = role === "borrowed" ? "صاحب ابزار" : "اجاره‌گیرنده";
+export default function RentalCard({ rental, role, onCancel, onConfirm, onHandover, onMarkReturned }) {
+  const { tool, borrower, status, total_price } = rental;
+  // در پاسخ فعلی بک‌اند، owner فقط در جزئیات رزرو (نه در لیست) برمی‌گردد؛
+  // فعلاً برای نمایش طرف مقابل از borrower استفاده می‌کنیم و در نمای "گرفته‌ام"
+  // (role=borrowed) چیزی نشان نمی‌دهیم تا داده‌ی نادرست نمایش داده نشود.
+  const counterparty = role === "lent" ? borrower : null;
+  const counterpartyLabel = "اجاره‌گیرنده";
 
   const isCancelled = status === "cancelled";
-  const isOverdue = status === "overdue";
 
   return (
     <div
-      className={`mb-3 flex flex-wrap items-center gap-4 rounded-lg border p-4 sm:flex-nowrap ${
-        isOverdue ? "border-danger-50 bg-[#FFFBFA]" : "border-gray-200 bg-white"
-      } ${isCancelled ? "opacity-65" : ""}`}
+      className={`mb-3 flex flex-wrap items-center gap-4 rounded-lg border p-4 sm:flex-nowrap border-gray-200 bg-white ${
+        isCancelled ? "opacity-65" : ""
+      }`}
     >
       <div className="flex h-[88px] w-[88px] shrink-0 items-center justify-center rounded-md bg-primary-50 text-[28px] text-primary-600">
         <i className="fa-solid fa-toolbox opacity-70" />
@@ -128,7 +148,7 @@ export default function RentalCard({ rental, role, onCancel, onMarkReturned, onP
         <div className="mb-1.5 flex items-start justify-between gap-3">
           <div>
             <div className="text-md font-semibold text-gray-900">{tool.name}</div>
-            <div className="mt-0.5 text-xs text-gray-400">کد رزرو: #{booking_code}</div>
+            <div className="mt-0.5 text-xs text-gray-400">کد رزرو: #{rental.id}</div>
           </div>
           <RentalStatusBadge status={status} />
         </div>
@@ -137,18 +157,9 @@ export default function RentalCard({ rental, role, onCancel, onMarkReturned, onP
           <div className="flex items-center gap-1 text-xs text-gray-500">
             <i className="fa-regular fa-calendar" />
             {formatDateRange(rental.start_date, rental.end_date)}
-            {isOverdue && ` — ${toPersianDigits(rental.overdue_days)} روز تأخیر`}
           </div>
-          {tool.address && (
-            <div className="flex items-center gap-1 text-xs text-gray-500">
-              <i className="fa-solid fa-location-dot" />
-              {tool.address}
-            </div>
-          )}
           {isCancelled && (
-            <div className="text-xs text-gray-500">
-              لغو شده توسط {rental.cancelled_by === "owner" ? "صاحب ابزار" : "اجاره‌گیرنده"}
-            </div>
+            <div className="text-xs text-gray-500">رزرو لغو شده است</div>
           )}
         </div>
 
@@ -172,7 +183,7 @@ export default function RentalCard({ rental, role, onCancel, onMarkReturned, onP
       <div className="flex w-full min-w-[130px] flex-col items-end gap-2 sm:w-auto">
         <div
           className={`text-lg font-semibold ${
-            isOverdue ? "text-danger-600" : isCancelled ? "text-gray-400 line-through" : "text-gray-900"
+            isCancelled ? "text-gray-400 line-through" : "text-gray-900"
           }`}
         >
           {formatPriceShort(total_price)}
@@ -182,8 +193,9 @@ export default function RentalCard({ rental, role, onCancel, onMarkReturned, onP
             rental={rental}
             role={role}
             onCancel={onCancel}
+            onConfirm={onConfirm}
+            onHandover={onHandover}
             onMarkReturned={onMarkReturned}
-            onPayPenalty={onPayPenalty}
           />
         </div>
       </div>

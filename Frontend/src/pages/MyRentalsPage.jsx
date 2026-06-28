@@ -18,20 +18,26 @@ export default function MyRentalsPage() {
     lentCount,
     status,
     refetch,
+    confirm,
+    handover,
+    markReturned,
+    cancel,
   } = useMyRentals();
 
   const handleCancel = (rental) => {
-    // فعلاً فقط لاگ — وقتی Rental API آماده شد، اینجا POST /api/rentals/<id>/cancel/ صدا زده می‌شه
-    console.log("لغو درخواست رزرو:", rental.id);
+    cancel(rental.id);
+  };
+
+  const handleConfirm = (rental) => {
+    confirm(rental.id);
+  };
+
+  const handleHandover = (rental) => {
+    handover(rental.id);
   };
 
   const handleMarkReturned = (rental) => {
-    // وقتی Rental API آماده شد: POST /api/rentals/<id>/return/
-    console.log("ثبت بازگشت ابزار:", rental.id);
-  };
-
-  const handlePayPenalty = (rental) => {
-    console.log("پرداخت جریمه برای رزرو:", rental.id);
+    markReturned(rental.id);
   };
 
   return (
@@ -68,8 +74,9 @@ export default function MyRentalsPage() {
               rental={rental}
               role={role}
               onCancel={handleCancel}
+              onConfirm={handleConfirm}
+              onHandover={handleHandover}
               onMarkReturned={handleMarkReturned}
-              onPayPenalty={handlePayPenalty}
             />
           ))}
       </div>

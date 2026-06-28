@@ -19,8 +19,6 @@ import {
   mockAvailability,
   mockToolReviews,
   mockRelatedTools,
-  mockMyRentals,
-  mockMyToolRentals,
   mockConversations,
   mockConversationMessages,
   mockReviewTags,
@@ -241,29 +239,78 @@ export async function registerUser(payload) {
 }
 
 /**
- * GET /api/rentals/my/?status=...
- * @param {string|null} statusFilter - یکی از RENTAL_STATUS_LABELS یا null برای همه
+ * GET /api/rentals/my/
+ * بک‌اند فعلاً فیلتر status رو در query قبول نمی‌کنه؛ فیلتر سمت کلاینت
+ * در useMyRentals انجام می‌شه (statusFilter همچنان به همون شکل کار می‌کنه).
+ * @returns {Promise<Array>} - هر رزرو: { id, tool, borrower, start_date, end_date, total_price, deposit_held, status, created_at }
  */
-export async function fetchMyRentals(statusFilter = null) {
-  await delay(350);
-  let results = [...mockMyRentals.data];
-  if (statusFilter) {
-    results = results.filter((r) => r.status === statusFilter);
+export async function fetchMyRentals() {
+  try {
+    const res = await axiosClient.get("/rentals/my/");
+    // بک‌اند: { status: "success", data: [...] }
+    return res.data.data;
+  } catch (err) {
+    if (!err.response) throw new ApiError("network_error", "اتصال به سرور ممکن نیست.");
+    throw new ApiError("server_error", "خطا در دریافت لیست رزروها.");
   }
-  return results;
 }
 
 /**
- * GET /api/rentals/my-tools/?status=...
- * @param {string|null} statusFilter
+ * GET /api/rentals/my-tools/
+ * @returns {Promise<Array>}
  */
-export async function fetchMyToolRentals(statusFilter = null) {
-  await delay(350);
-  let results = [...mockMyToolRentals.data];
-  if (statusFilter) {
-    results = results.filter((r) => r.status === statusFilter);
+export async function fetchMyToolRentals() {
+  try {
+    const res = await axiosClient.get("/rentals/my-tools/");
+    return res.data.data;
+  } catch (err) {
+    if (!err.response) throw new ApiError("network_error", "اتصال به سرور ممکن نیست.");
+    throw new ApiError("server_error", "خطا در دریافت لیست ابزارهای اجاره‌رفته.");
   }
-  return results;
+}
+
+/** POST /api/rentals/<id>/confirm/ — تأیید رزرو (فقط صاحب ابزار) */
+export async function confirmRental(rentalId) {
+  try {
+    const res = await axiosClient.post(`/rentals/${rentalId}/confirm/`);
+    return res.data;
+  } catch (err) {
+    if (!err.response) throw new ApiError("network_error", "اتصال به سرور ممکن نیست.");
+    throw new ApiError("bad_request", err.response.data?.message || "خطا در تأیید رزرو.");
+  }
+}
+
+/** POST /api/rentals/<id>/handover/ — ثبت تحویل ابزار (فقط صاحب ابزار) */
+export async function handoverRental(rentalId) {
+  try {
+    const res = await axiosClient.post(`/rentals/${rentalId}/handover/`);
+    return res.data;
+  } catch (err) {
+    if (!err.response) throw new ApiError("network_error", "اتصال به سرور ممکن نیست.");
+    throw new ApiError("bad_request", err.response.data?.message || "خطا در ثبت تحویل.");
+  }
+}
+
+/** POST /api/rentals/<id>/return/ — ثبت بازگشت ابزار (فقط صاحب ابزار) */
+export async function returnRental(rentalId) {
+  try {
+    const res = await axiosClient.post(`/rentals/${rentalId}/return/`);
+    return res.data;
+  } catch (err) {
+    if (!err.response) throw new ApiError("network_error", "اتصال به سرور ممکن نیست.");
+    throw new ApiError("bad_request", err.response.data?.message || "خطا در ثبت بازگشت.");
+  }
+}
+
+/** POST /api/rentals/<id>/cancel/ — لغو رزرو (صاحب یا اجاره‌گیرنده، فقط در وضعیت pending) */
+export async function cancelRental(rentalId) {
+  try {
+    const res = await axiosClient.post(`/rentals/${rentalId}/cancel/`);
+    return res.data;
+  } catch (err) {
+    if (!err.response) throw new ApiError("network_error", "اتصال به سرور ممکن نیست.");
+    throw new ApiError("bad_request", err.response.data?.message || "خطا در لغو رزرو.");
+  }
 }
 
 /** GET /api/chat/conversations/ */

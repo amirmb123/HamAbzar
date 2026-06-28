@@ -5,7 +5,6 @@ const STATUS_CONFIG = {
   returned: { icon: "fa-solid fa-circle-check", label: "تکمیل‌شده", className: "bg-primary-50 text-primary-600" },
   cancelled: { icon: "fa-solid fa-ban", label: "لغوشده", className: "bg-gray-100 text-gray-500" },
   disputed: { icon: "fa-solid fa-flag", label: "در حال بررسی", className: "bg-gray-100 text-gray-500" },
-  overdue: { icon: "fa-solid fa-triangle-exclamation", label: "تأخیر در بازگشت", className: "bg-danger-50 text-danger-600" },
 };
 
 export default function RentalStatusBadge({ status }) {
