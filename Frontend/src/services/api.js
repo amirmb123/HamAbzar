@@ -9,6 +9,8 @@
 // نمی‌خورن.
 // ─────────────────────────────────────────────────────────────
 
+import axiosClient from "./axiosClient";
+
 import {
   mockTools,
   mockCategories,
@@ -164,15 +166,24 @@ export async function fetchRelatedTools(id) {
   return mockRelatedTools.data;
 }
 
-// ✅ کد جدید — جایگزین کن:
-import axiosClient from "./axiosClient";
-
 export async function requestOtp(phone) {
   const fullPhone = phone.startsWith("0") ? phone : `0${phone}`;
   try {
     const res = await axiosClient.post("/auth/request-otp/", { phone: fullPhone });
     return res.data;
   } catch (err) {
+    // خطای شبکه — سرور در دسترس نیست (ECONNREFUSED, Network Error, ...)
+    if (!err.response) {
+      throw new ApiError(
+        "network_error",
+        "اتصال به سرور ممکن نیست. لطفاً اینترنت یا آدرس سرور را بررسی کنید."
+      );
+    }
+    // خطای rate limit
+    if (err.response.status === 429) {
+      const msg = err.response.data?.message || "لطفاً چند دقیقه صبر کنید و دوباره تلاش کنید.";
+      throw new ApiError("rate_limit", typeof msg === "string" ? msg : JSON.stringify(msg));
+    }
     const msg = err.response?.data?.message || "ارسال کد ناموفق بود.";
     throw new ApiError("bad_request", typeof msg === "string" ? msg : JSON.stringify(msg));
   }
@@ -185,7 +196,10 @@ export async function verifyOtp(phone, code) {
     // res.data = { status, next: 'login'|'register', data: {...} }
     return res.data;
   } catch (err) {
-    const msg = err.response?.data?.message || "کد اشتباه است.";
+    if (!err.response) {
+      throw new ApiError("network_error", "اتصال به سرور ممکن نیست.");
+    }
+    const msg = err.response?.data?.message || "کد اشتباه یا منقضی شده است.";
     throw new ApiError("bad_request", typeof msg === "string" ? msg : JSON.stringify(msg));
   }
 }
@@ -196,8 +210,21 @@ export async function registerUser(payload) {
     const res = await axiosClient.post("/auth/register/", payload);
     return res.data;
   } catch (err) {
-    const msg = err.response?.data?.message || "خطا در ثبت‌نام.";
-    throw new ApiError("bad_request", typeof msg === "string" ? msg : JSON.stringify(msg));
+    if (!err.response) {
+      throw new ApiError("network_error", "اتصال به سرور ممکن نیست.");
+    }
+    const data = err.response?.data;
+    // اگر message یه object بود (validation errors)، اولین خطا رو نشون بده
+    let msg = "خطا در ثبت‌نام.";
+    if (typeof data?.message === "string") {
+      msg = data.message;
+    } else if (typeof data?.message === "object") {
+      // مثلاً { username: ["این نام کاربری قبلاً استفاده شده"] }
+      const firstKey = Object.keys(data.message)[0];
+      const firstVal = data.message[firstKey];
+      msg = Array.isArray(firstVal) ? firstVal[0] : String(firstVal);
+    }
+    throw new ApiError("bad_request", msg);
   }
 }
 

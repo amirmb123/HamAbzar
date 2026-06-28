@@ -30,7 +30,17 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+
+    '10.0.0.0/8',
+    '172.16.0.0/12',
+    '192.168.0.0/16',
+]
+
+if DEBUG:
+    ALLOWED_HOSTS = ['*']
 
 # Application definition
 
@@ -151,6 +161,10 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",   # React/Vite
     "http://localhost:3000",
 ]
+
+# در محیط dev همه originها رو قبول کن (گوشی روی شبکه محلی)
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
 
 # ── MEDIA (تصاویر آپلودی) ────────────────────────────
 MEDIA_URL  = '/media/'
