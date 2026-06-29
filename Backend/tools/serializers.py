@@ -84,6 +84,7 @@ class ToolListSerializer(serializers.ModelSerializer):
             'owner',
             'thumbnail',
             'distance_km',
+            'latitude', 'longitude',
             # 'rating',
         ]
 
@@ -114,8 +115,9 @@ class ToolDetailSerializer(serializers.ModelSerializer):
     """
     Full representation returned by the retrieve endpoint.
     Includes the complete image gallery and owner details.
-    Note: latitude / longitude are intentionally omitted to protect
-    the owner's exact address (only approximate location is exposed).
+    latitude / longitude are the location the owner picked on the map
+    when creating the listing — shown as-is (this is a location the
+    owner explicitly chose to publish, not a private address field).
     """
     category = CategorySerializer(read_only=True)
     city     = CitySerializer(read_only=True)
@@ -128,6 +130,7 @@ class ToolDetailSerializer(serializers.ModelSerializer):
             'id', 'name', 'description',
             'category', 'city', 'address',
             'daily_price', 'deposit_amount',
+            'latitude', 'longitude',
             'is_available',
             'owner',
             'images',
