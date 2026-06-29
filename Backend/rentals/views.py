@@ -19,12 +19,12 @@ Business rules enforced here:
 
 from django.db import transaction
 from django.utils import timezone
-from django.db.models import Avg, Count
+from django.db.models import Avg, Count, F
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 
 from .models import Rental, Transaction, Review
 from .serializers import (
@@ -32,6 +32,7 @@ from .serializers import (
     RentalDetailSerializer,
     RentalCreateSerializer,
     ReviewCreateSerializer,
+    ToolReviewSerializer,
     MessageSerializer,
 )
 from chat.models import Message
@@ -472,6 +473,29 @@ class ReviewCreateView(APIView):
             {'status': 'success', 'message': 'امتیاز با موفقیت ثبت شد.'},
             status=status.HTTP_201_CREATED,
         )
+
+
+class ToolReviewListView(APIView):
+    """
+    GET /api/tools/<tool_id>/reviews/ — public list of all reviews
+    received by a tool, across all of its (returned) rentals.
+    No authentication required; this is shown on the public tool detail page.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request, tool_id):
+        # فقط نظراتی که گیرنده‌شون owner ابزار است (یعنی نظر اجاره‌گیرنده‌ها
+        # درباره‌ی owner/ابزار) — نه نظراتی که owner درباره‌ی اجاره‌گیرنده‌ها
+        # نوشته (آن نظرات درباره‌ی شخص اجاره‌گیرنده‌اند، نه ابزار، و نباید
+        # روی صفحه‌ی عمومی این آگهی افشا شوند).
+        reviews = (
+            Review.objects
+            .filter(rental__tool_id=tool_id, reviewed_id=F('rental__tool__owner_id'))
+            .select_related('reviewer')
+            .order_by('-created_at')
+        )
+        serializer = ToolReviewSerializer(reviews, many=True)
+        return Response({'status': 'success', 'data': serializer.data})
 
 
 # ─────────────────────────────────────────────

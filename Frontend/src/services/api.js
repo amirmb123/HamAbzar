@@ -17,7 +17,6 @@ import {
   mockCities,
   mockToolDetail,
   mockAvailability,
-  mockToolReviews,
   mockAdminKpis,
   mockRentalTrend,
   mockPendingApprovals,
@@ -155,12 +154,36 @@ export async function fetchCities() {
 
 /**
  * GET /api/tools/<id>/reviews/
+ * بک‌اند فقط آرایه‌ی خام نظرات رو برمی‌گردونه (هر کدام: id, reviewer_name,
+ * rating, comment, created_at) — بدون average_rating/breakdown/total_count.
+ * این آماره‌ها رو همینجا از روی همون آرایه محاسبه می‌کنیم تا
+ * ReviewsSection.jsx بدون تغییر شکل ورودی، همونطور که هست کار کنه.
  * @param {number} id
  */
 export async function fetchToolReviews(id) {
-  // ⚠️ بک‌اند هنوز GET /api/tools/<id>/reviews/ ندارد — فعلاً mock
-  await delay(300);
-  return mockToolReviews.data;
+  try {
+    const res = await axiosClient.get(`/tools/${id}/reviews/`);
+    const reviews = res.data.data || [];
+
+    const total_count = reviews.length;
+    const sum = reviews.reduce((acc, r) => acc + r.rating, 0);
+    const average_rating = total_count > 0 ? sum / total_count : 0;
+
+    const breakdown = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    if (total_count > 0) {
+      reviews.forEach((r) => {
+        breakdown[r.rating] = (breakdown[r.rating] || 0) + 1;
+      });
+      for (const star of [1, 2, 3, 4, 5]) {
+        breakdown[star] = Math.round((breakdown[star] / total_count) * 100);
+      }
+    }
+
+    return { average_rating, total_count, breakdown, reviews };
+  } catch (err) {
+    if (!err.response) throw new ApiError("network_error", "اتصال به سرور ممکن نیست.");
+    throw new ApiError("server_error", "خطا در دریافت نظرات.");
+  }
 }
 
 /**

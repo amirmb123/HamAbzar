@@ -182,6 +182,22 @@ class ReviewCreateSerializer(serializers.Serializer):
 
 
 # ─────────────────────────────────────────────
+# Review — Public list (for tool detail page)
+# ─────────────────────────────────────────────
+
+class ToolReviewSerializer(serializers.ModelSerializer):
+    """
+    Read-only public representation of a review, used to list all reviews
+    received for a given tool (across all of its past rentals).
+    """
+    reviewer_name = serializers.CharField(source='reviewer.full_name', read_only=True)
+
+    class Meta:
+        model  = Review
+        fields = ['id', 'reviewer_name', 'rating', 'comment', 'created_at']
+
+
+# ─────────────────────────────────────────────
 # Message — List & Create
 # ─────────────────────────────────────────────
 

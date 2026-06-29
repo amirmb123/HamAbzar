@@ -18,11 +18,16 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from rentals.views import ToolReviewListView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/',      include('accounts.urls')),
     path('api/tools/',     include('tools.urls')),
+    # ⚠️ Defined directly here (not in tools/urls.py) to avoid a circular
+    # import between the tools and rentals apps — the Review model and
+    # its public-list view live in rentals, which already depends on tools.
+    path('api/tools/<int:tool_id>/reviews/', ToolReviewListView.as_view(), name='tool-reviews'),
     path('api/rentals/',   include('rentals.urls')),
     path('api/disputes/',  include('disputes.urls')),
 ]
