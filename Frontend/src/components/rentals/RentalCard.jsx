@@ -47,6 +47,11 @@ function RentalActions({ rental, role, onCancel, onConfirm, onHandover, onMarkRe
         <Button variant="outline" size="sm" onClick={() => onCancel?.(rental)}>
           رد درخواست
         </Button>
+        <Link to={`/rentals/${rental.id}/chat`}>
+          <Button variant="outline" size="sm">
+            چت با اجاره‌گیرنده
+          </Button>
+        </Link>
         <Button size="sm" onClick={() => onConfirm?.(rental)}>
           تأیید رزرو
         </Button>
@@ -56,9 +61,16 @@ function RentalActions({ rental, role, onCancel, onConfirm, onHandover, onMarkRe
 
   if (status === "confirmed" && role === "lent") {
     return (
-      <Button size="sm" onClick={() => onHandover?.(rental)}>
-        ثبت تحویل ابزار
-      </Button>
+      <>
+        <Link to={`/rentals/${rental.id}/chat`}>
+          <Button variant="outline" size="sm">
+            چت با اجاره‌گیرنده
+          </Button>
+        </Link>
+        <Button size="sm" onClick={() => onHandover?.(rental)}>
+          ثبت تحویل ابزار
+        </Button>
+      </>
     );
   }
 
@@ -72,9 +84,16 @@ function RentalActions({ rental, role, onCancel, onConfirm, onHandover, onMarkRe
 
   if (status === "active" && role === "lent") {
     return (
-      <Button size="sm" onClick={() => onMarkReturned?.(rental)}>
-        ثبت بازگشت ابزار
-      </Button>
+      <>
+        <Link to={`/rentals/${rental.id}/chat`}>
+          <Button variant="outline" size="sm">
+            چت با اجاره‌گیرنده
+          </Button>
+        </Link>
+        <Button size="sm" onClick={() => onMarkReturned?.(rental)}>
+          ثبت بازگشت ابزار
+        </Button>
+      </>
     );
   }
 
