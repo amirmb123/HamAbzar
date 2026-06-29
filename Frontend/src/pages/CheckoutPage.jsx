@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { useToolDetail } from "../hooks/useToolDetail";
 import { useCheckoutFlow } from "../hooks/useCheckoutFlow";
@@ -10,16 +11,23 @@ import DeliveryOptions from "../components/checkout/DeliveryOptions";
 import RentalTermsBox from "../components/checkout/RentalTermsBox";
 import CheckoutSummarySidebar from "../components/checkout/CheckoutSummarySidebar";
 import StateMessage from "../components/common/StateMessage";
+import { jalaliToIsoString } from "../utils/jalali";
+import { shiftMonth } from "../utils/calendarLogic";
+
+/** تبدیل ماه شمسی {jy, jm} به رشته‌ی میلادی "YYYY-MM" برای API */
+function jalaliMonthToGregorianString(jy, jm) {
+  const isoFirstDay = jalaliToIsoString(jy, jm, 1);
+  return isoFirstDay.slice(0, 7);
+}
 
 export default function CheckoutPage() {
   const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
 
-  // اگر از صفحه‌ی جزئیات ابزار با بازه‌ی تاریخ از‌پیش‌انتخاب‌شده اومده باشیم
   const initialRange = location.state?.range || { start: null, end: null };
 
-  const { tool, toolStatus, bookedDates } = useToolDetail(id);
+  const { tool, toolStatus, bookedDates, fetchAvailabilityForMonths } = useToolDetail(id);
   const {
     currentStep,
     range,
@@ -32,6 +40,17 @@ export default function CheckoutPage() {
     errorMessage,
     goToPaymentStep,
   } = useCheckoutFlow(id, initialRange);
+
+  // هر بار که کاربر ماه تقویم را عوض کند، availability ماه جدید را fetch می‌کنیم
+  const handleMonthChange = useCallback(
+    (jy, jm) => {
+      const currentMonth = jalaliMonthToGregorianString(jy, jm);
+      const next = shiftMonth(jy, jm, 1);
+      const nextMonth = jalaliMonthToGregorianString(next.jy, next.jm);
+      fetchAvailabilityForMonths(currentMonth, nextMonth);
+    },
+    [fetchAvailabilityForMonths]
+  );
 
   const handleContinue = async () => {
     const result = await goToPaymentStep();
@@ -86,7 +105,12 @@ export default function CheckoutPage() {
             انتخاب تاریخ اجاره
           </h2>
           <div className="mb-5">
-            <TwoMonthCalendar bookedDates={bookedDates} range={range} onRangeChange={setRange} />
+            <TwoMonthCalendar
+              bookedDates={bookedDates}
+              range={range}
+              onRangeChange={setRange}
+              onMonthChange={handleMonthChange}
+            />
           </div>
 
           <h2 className="mb-4 mt-2 text-lg font-semibold text-gray-900">ساعت تحویل</h2>

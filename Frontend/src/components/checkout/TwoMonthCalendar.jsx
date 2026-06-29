@@ -9,10 +9,12 @@ const LEGEND_ITEMS = [
   { swatchClass: "border-[1.5px] border-primary-600", label: "امروز" },
 ];
 
-/** تقویم دوماهه‌ی فلوی checkout — ماه اول و ماه بعدش کنار هم نشون داده می‌شن */
-export default function TwoMonthCalendar({ bookedDates = [], range, onRangeChange }) {
+/** تقویم دوماهه‌ی فلوی checkout — ماه اول و ماه بعدش کنار هم نشون داده می‌شن
+ *  onMonthChange: هر بار که ماه عوض شود، ماه شمسی جدید (jy, jm) را به والد می‌دهد
+ */
+export default function TwoMonthCalendar({ bookedDates = [], range, onRangeChange, onMonthChange }) {
   const { today, viewYear, viewMonth, goToPrevMonth, goToNextMonth, handleDayClick, getDayState } =
-    useDateRangeCalendar(bookedDates, range, onRangeChange);
+    useDateRangeCalendar(bookedDates, range, onRangeChange, onMonthChange);
 
   const secondMonth = shiftMonth(viewYear, viewMonth, 1);
 

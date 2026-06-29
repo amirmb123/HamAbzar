@@ -2,9 +2,7 @@ import { useMemo, useState } from "react";
 import {
   jalaliMonthLength,
   jalaliFirstDayOfWeek,
-  jalaliToIsoString,
   getTodayJalali,
-  toJalali,
 } from "./jalali";
 
 /** ساخت آرایه‌ی سلول‌های یک ماه شمسی (null برای جاهای خالی ابتدای ماه) */
@@ -32,16 +30,17 @@ export function shiftMonth(jy, jm, delta) {
 
 /**
  * منطق مشترک تقویم انتخاب بازه‌ی تاریخ.
- * ⚠️ نکته: ماه پیش‌فرض نمایش، ماه جاری سیستم نیست؛ ماهیه که اولین تاریخ
- * bookedDates در آن قرار دارد (به همان دلیلی که در AvailabilityCalendar
- * توضیح داده شده — mock data برای یک بازه‌ی ثابت ساخته شده، نه «همین ماه»).
+ *
+ * onMonthChange?: (jy: number, jm: number) => void
+ *   هر بار که کاربر ماه را عوض کند، ماه شمسی جدید را برمی‌گرداند.
+ *   صفحه‌های والد می‌توانند از این برای fetch availability ماه جدید استفاده کنند.
  */
-export function useDateRangeCalendar(bookedDates = [], range, onRangeChange) {
+export function useDateRangeCalendar(bookedDates = [], range, onRangeChange, onMonthChange) {
   const today = getTodayJalali();
-  const firstBookedJalali = bookedDates.length > 0 ? toJalali(bookedDates[0]) : today;
 
-  const [viewYear, setViewYear] = useState(firstBookedJalali.jy);
-  const [viewMonth, setViewMonth] = useState(firstBookedJalali.jm);
+  // ✅ اصلاح: ماه نمایش از ماه جاری شروع می‌شه نه از اولین bookedDate
+  const [viewYear, setViewYear] = useState(today.jy);
+  const [viewMonth, setViewMonth] = useState(today.jm);
 
   const bookedSet = useMemo(() => new Set(bookedDates), [bookedDates]);
 
@@ -49,12 +48,14 @@ export function useDateRangeCalendar(bookedDates = [], range, onRangeChange) {
     const { jy, jm } = shiftMonth(viewYear, viewMonth, -1);
     setViewYear(jy);
     setViewMonth(jm);
+    onMonthChange?.(jy, jm);
   };
 
   const goToNextMonth = () => {
     const { jy, jm } = shiftMonth(viewYear, viewMonth, 1);
     setViewYear(jy);
     setViewMonth(jm);
+    onMonthChange?.(jy, jm);
   };
 
   const handleDayClick = (iso) => {

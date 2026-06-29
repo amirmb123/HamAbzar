@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useToolDetail } from "../hooks/useToolDetail";
 
@@ -11,14 +11,42 @@ import ReservationCard from "../components/tools/ReservationCard";
 import ReviewsSection from "../components/tools/ReviewsSection";
 import RelatedTools from "../components/tools/RelatedTools";
 import StateMessage from "../components/common/StateMessage";
+import { jalaliToIsoString, jalaliMonthLength } from "../utils/jalali";
+import { shiftMonth } from "../utils/calendarLogic";
+
+/** تبدیل ماه شمسی {jy, jm} به رشته‌ی میلادی "YYYY-MM" برای API */
+function jalaliMonthToGregorianString(jy, jm) {
+  // اول روز ماه شمسی را به میلادی تبدیل می‌کنیم
+  const isoFirstDay = jalaliToIsoString(jy, jm, 1);
+  return isoFirstDay.slice(0, 7); // "YYYY-MM"
+}
 
 export default function ToolDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { tool, toolStatus, bookedDates, reviewsData, reviewsStatus, relatedTools, relatedStatus } =
-    useToolDetail(id);
+  const {
+    tool,
+    toolStatus,
+    bookedDates,
+    fetchAvailabilityForMonths,
+    reviewsData,
+    reviewsStatus,
+    relatedTools,
+    relatedStatus,
+  } = useToolDetail(id);
 
   const [range, setRange] = useState({ start: null, end: null });
+
+  // هر بار که کاربر ماه تقویم را عوض کند، availability ماه جدید را fetch می‌کنیم
+  const handleMonthChange = useCallback(
+    (jy, jm) => {
+      const currentMonth = jalaliMonthToGregorianString(jy, jm);
+      const next = shiftMonth(jy, jm, 1);
+      const nextMonth = jalaliMonthToGregorianString(next.jy, next.jm);
+      fetchAvailabilityForMonths(currentMonth, nextMonth);
+    },
+    [fetchAvailabilityForMonths]
+  );
 
   if (toolStatus === "error") {
     return (
@@ -55,7 +83,12 @@ export default function ToolDetailPage() {
           <OwnerCard owner={tool.owner} />
 
           <h2 className="mb-2.5 mt-5 text-lg font-medium text-gray-900">تقویم دسترسی</h2>
-          <AvailabilityCalendar bookedDates={bookedDates} range={range} onRangeChange={setRange} />
+          <AvailabilityCalendar
+            bookedDates={bookedDates}
+            range={range}
+            onRangeChange={setRange}
+            onMonthChange={handleMonthChange}
+          />
 
           <ReviewsSection reviewsData={reviewsData} status={reviewsStatus} />
 

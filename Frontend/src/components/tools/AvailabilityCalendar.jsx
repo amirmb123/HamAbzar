@@ -3,13 +3,12 @@ import { useDateRangeCalendar, buildMonthCells } from "../../utils/calendarLogic
 
 /**
  * تقویم دسترسی ابزار (تک‌ماهه) — استفاده‌شده در صفحه‌ی جزئیات ابزار.
- * منطق هسته‌ای مشترک با نسخه‌ی دوماهه‌ی فلوی checkout در
- * src/utils/calendarLogic.js قرار دارد تا رفتار انتخاب بازه و
- * تشخیص روزهای رزرو‌شده در هر دو جا یکسان باشد.
+ * onMonthChange: هر بار که کاربر ماه را عوض کند فراخوانده می‌شود
+ *                تا والد بتواند availability ماه جدید را fetch کند.
  */
-export default function AvailabilityCalendar({ bookedDates = [], range, onRangeChange }) {
+export default function AvailabilityCalendar({ bookedDates = [], range, onRangeChange, onMonthChange }) {
   const { today, viewYear, viewMonth, goToPrevMonth, goToNextMonth, handleDayClick, getDayState } =
-    useDateRangeCalendar(bookedDates, range, onRangeChange);
+    useDateRangeCalendar(bookedDates, range, onRangeChange, onMonthChange);
 
   const cells = buildMonthCells(viewYear, viewMonth);
 
