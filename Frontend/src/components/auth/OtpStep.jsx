@@ -26,7 +26,24 @@ export default function OtpStep({
   }, []);
 
   const handleDigitChange = (index, value) => {
-    const digit = value.replace(/\D/g, "").slice(-1);
+    const digits = value.replace(/\D/g, "");
+
+    if (digits.length > 1) {
+      const next = [...otpDigits];
+      let lastFilledIndex = index;
+      for (let i = 0; i < digits.length && index + i < 6; i++) {
+        next[index + i] = digits[i];
+        lastFilledIndex = index + i;
+      }
+      onOtpChange(next);
+      inputRefs.current[Math.min(lastFilledIndex + 1, 5)]?.focus();
+      if (next.every((d) => d) && next.join("").length === 6) {
+        onSubmit(next.join(""));
+      }
+      return;
+    }
+
+    const digit = digits.slice(-1);
     const next = [...otpDigits];
     next[index] = digit;
     onOtpChange(next);
@@ -80,7 +97,6 @@ export default function OtpStep({
             ref={(el) => (inputRefs.current[idx] = el)}
             type="text"
             inputMode="numeric"
-            maxLength={1}
             value={digit}
             onChange={(e) => handleDigitChange(idx, e.target.value)}
             onKeyDown={(e) => handleKeyDown(idx, e)}

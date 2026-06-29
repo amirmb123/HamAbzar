@@ -15,17 +15,20 @@ export default function PhoneStep({ phone, onPhoneChange, onSubmit, isSubmitting
 
       <div className="mb-4">
         <label className="mb-2 block text-sm font-medium text-gray-900">شماره موبایل</label>
-        <div className="flex items-center overflow-hidden rounded-md border border-gray-200 transition focus-within:border-primary-600 focus-within:shadow-[0_0_0_3px_rgba(26,107,74,.1)]">
+        <div dir="ltr" className="flex items-center overflow-hidden rounded-md border border-gray-200 transition focus-within:border-primary-600 focus-within:shadow-[0_0_0_3px_rgba(26,107,74,.1)]">
           <span className="whitespace-nowrap border-l border-gray-200 bg-gray-50 px-3.5 py-2.5 text-base text-gray-500">
             +۹۸
           </span>
           <input
             type="tel"
             dir="ltr"
-            maxLength={10}
             placeholder="912 345 6789"
             value={phone}
-            onChange={(e) => onPhoneChange(e.target.value.replace(/\D/g, ""))}
+            onChange={(e) =>
+              onPhoneChange(
+                e.target.value.replace(/\D/g, "").replace(/^0+/, "").slice(0, 10)
+              )
+            }
             className="flex-1 px-3.5 py-2.5 text-right text-md tracking-wide outline-none"
             style={{ textAlign: "left" }}
           />
