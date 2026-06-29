@@ -38,9 +38,12 @@ export default function Header({ searchValue, onSearchChange }) {
         <span className="cursor-pointer rounded-md px-3 py-2 text-base font-medium text-primary-600">
           کاوش
         </span>
-        <span className="cursor-pointer rounded-md px-3 py-2 text-base text-gray-500 transition hover:bg-gray-100 hover:text-gray-900">
+        <Link
+          to="/my-tools"
+          className="cursor-pointer rounded-md px-3 py-2 text-base text-gray-500 transition hover:bg-gray-100 hover:text-gray-900"
+        >
           ابزارهای من
-        </span>
+        </Link>
         <Link
           to="/my-rentals"
           className="cursor-pointer rounded-md px-3 py-2 text-base text-gray-500 transition hover:bg-gray-100 hover:text-gray-900"

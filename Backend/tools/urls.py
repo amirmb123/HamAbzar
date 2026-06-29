@@ -10,6 +10,7 @@ because they are tightly coupled to tool filtering.
 Full URL map:
   GET    /api/tools/                       → list + geo-search
   POST   /api/tools/                       → create tool
+  GET    /api/tools/my/                    → current user's own tools
   GET    /api/tools/<id>/                  → tool detail
   PATCH  /api/tools/<id>/                  → update tool (owner only)
   DELETE /api/tools/<id>/                  → delete tool (owner only)
@@ -28,6 +29,13 @@ urlpatterns = [
         '',
         views.ToolListCreateView.as_view(),
         name='tool-list-create',
+    ),
+
+    # ── My tools (must come before <int:tool_id>/) ──
+    path(
+        'my/',
+        views.MyToolsView.as_view(),
+        name='my-tools',
     ),
 
     # ── Tool item ────────────────────────────

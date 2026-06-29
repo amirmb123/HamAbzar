@@ -4,6 +4,7 @@ tools/views.py
 All views for the Tools app.  Responsible for:
   - GET  /api/tools/              → paginated list with optional geo-filter
   - POST /api/tools/              → create a new tool listing (auth required)
+  - GET  /api/tools/my/           → current user's own tool listings (auth required)
   - GET  /api/tools/<id>/         → full detail of a single tool
   - PATCH /api/tools/<id>/        → partial update (owner only)
   - DELETE /api/tools/<id>/       → delete (owner only)
@@ -173,6 +174,30 @@ class ToolListCreateView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+# ─────────────────────────────────────────────
+# My Tools — tools owned by the current user
+# ─────────────────────────────────────────────
+
+class MyToolsView(APIView):
+    """
+    GET /api/tools/my/  → authenticated user's own tool listings.
+
+    Unlike ToolListCreateView.get (public browse), this intentionally
+    does NOT filter by is_available, so owners can see and manage
+    listings that are currently marked unavailable/paused too.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        qs = Tool.objects.select_related('owner', 'category', 'city') \
+                         .prefetch_related('images') \
+                         .filter(owner=request.user) \
+                         .order_by('-created_at')
+
+        serializer = ToolListSerializer(qs, many=True, context={'request': request})
+        return Response({'status': 'success', 'data': serializer.data})
 
 
 # ─────────────────────────────────────────────

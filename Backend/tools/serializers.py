@@ -158,6 +158,7 @@ class ToolWriteSerializer(serializers.ModelSerializer):
             'category', 'city',
             'daily_price', 'deposit_amount',
             'latitude', 'longitude', 'address',
+            'is_available',
         ]
 
     def validate_latitude(self, value):

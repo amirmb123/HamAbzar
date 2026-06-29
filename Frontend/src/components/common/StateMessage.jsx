@@ -23,6 +23,12 @@ const VARIANTS = {
     desc: "وقتی ابزاری رزرو کنید یا کسی ابزار شما را اجاره کند، اینجا نمایش داده می‌شود",
     actionLabel: "مشاهده ابزارها",
   },
+  emptyMyTools: {
+    icon: "fa-solid fa-toolbox",
+    title: "هنوز ابزاری ثبت نکرده‌اید",
+    desc: "ابزارهایی که برای اجاره ثبت می‌کنید اینجا نمایش داده می‌شوند",
+    actionLabel: "ثبت اولین ابزار",
+  },
 };
 
 export default function StateMessage({ variant, onAction }) {

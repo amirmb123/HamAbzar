@@ -5,6 +5,8 @@ import ToolDetailPage from "./pages/ToolDetailPage";
 import AuthPage from "./pages/AuthPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import MyRentalsPage from "./pages/MyRentalsPage";
+import MyToolsPage from "./pages/MyToolsPage";
+import ProfilePage from "./pages/ProfilePage";
 import ChatPage from "./pages/ChatPage";
 import ReviewFormPage from "./pages/ReviewFormPage";
 import ToolFormPage from "./pages/ToolFormPage";
@@ -22,6 +24,8 @@ function App() {
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/checkout/:id" element={<CheckoutPage />} />
           <Route path="/my-rentals" element={<MyRentalsPage />} />
+          <Route path="/my-tools" element={<MyToolsPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="/rentals/:rentalId/chat" element={<ChatPage />} />
           <Route path="/rentals/:rentalId/review" element={<ReviewFormPage />} />
           <Route path="/admin" element={<AdminDashboardPage />} />

@@ -174,6 +174,96 @@ export async function fetchRelatedTools(id) {
   return mockRelatedTools.data;
 }
 
+/**
+ * GET /api/auth/me/
+ * @returns {Promise<Object>} - { id, phone, username, full_name, email, wallet_balance, rating, avatar }
+ */
+export async function fetchMyProfile() {
+  try {
+    const res = await axiosClient.get("/auth/me/");
+    return res.data.data;
+  } catch (err) {
+    if (!err.response) throw new ApiError("network_error", "اتصال به سرور ممکن نیست.");
+    throw new ApiError("server_error", "خطا در دریافت اطلاعات پروفایل.");
+  }
+}
+
+/**
+ * PATCH /api/auth/me/
+ * فیلدهای قابل ویرایش طبق UpdateProfileSerializer سمت بک‌اند: first_name, last_name, email, avatar
+ * اگر avatar فایل باشد (instanceof File)، به‌صورت multipart/form-data ارسال می‌شود.
+ * @param {Object} payload - { first_name, last_name, email, avatar? }
+ */
+export async function updateMyProfile(payload) {
+  const hasFile = payload.avatar instanceof File;
+  let body = payload;
+  let headers;
+
+  if (hasFile) {
+    const form = new FormData();
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) form.append(key, value);
+    });
+    body = form;
+    headers = { "Content-Type": "multipart/form-data" };
+  }
+
+  try {
+    const res = await axiosClient.patch("/auth/me/", body, headers ? { headers } : undefined);
+    return res.data.data;
+  } catch (err) {
+    if (!err.response) throw new ApiError("network_error", "اتصال به سرور ممکن نیست.");
+    const msg = err.response.data?.message;
+    const firstErr = typeof msg === "object" ? Object.values(msg).flat()[0] : msg;
+    throw new ApiError("bad_request", firstErr || "خطا در ویرایش پروفایل.");
+  }
+}
+
+/**
+ * GET /api/tools/my/
+ * ابزارهایی که کاربر فعلی ثبت کرده — شامل ابزارهای غیرفعال/متوقف هم می‌شود
+ * (برخلاف fetchTools که فقط ابزارهای is_available=true رو نشون می‌ده).
+ * @returns {Promise<Array>}
+ */
+export async function fetchMyTools() {
+  try {
+    const res = await axiosClient.get("/tools/my/");
+    return res.data.data;
+  } catch (err) {
+    if (!err.response) throw new ApiError("network_error", "اتصال به سرور ممکن نیست.");
+    throw new ApiError("server_error", "خطا در دریافت ابزارهای ثبت‌شده.");
+  }
+}
+
+/**
+ * PATCH /api/tools/<id>/ — فقط برای تغییر وضعیت در دسترس بودن (توقف/فعال‌سازی آگهی)
+ * @param {number} toolId
+ * @param {boolean} isAvailable
+ */
+export async function setToolAvailability(toolId, isAvailable) {
+  try {
+    const res = await axiosClient.patch(`/tools/${toolId}/`, { is_available: isAvailable });
+    return res.data.data;
+  } catch (err) {
+    if (!err.response) throw new ApiError("network_error", "اتصال به سرور ممکن نیست.");
+    throw new ApiError("bad_request", err.response.data?.message || "خطا در تغییر وضعیت ابزار.");
+  }
+}
+
+/**
+ * DELETE /api/tools/<id>/ — حذف ابزار (فقط صاحب ابزار)
+ * @param {number} toolId
+ */
+export async function deleteMyTool(toolId) {
+  try {
+    const res = await axiosClient.delete(`/tools/${toolId}/`);
+    return res.data;
+  } catch (err) {
+    if (!err.response) throw new ApiError("network_error", "اتصال به سرور ممکن نیست.");
+    throw new ApiError("bad_request", err.response.data?.message || "خطا در حذف ابزار.");
+  }
+}
+
 export async function requestOtp(phone) {
   const fullPhone = phone.startsWith("0") ? phone : `0${phone}`;
   try {

@@ -44,8 +44,13 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
+  // بعد از ویرایش موفق پروفایل (PATCH /auth/me/)، یوزر کش‌شده در context رو به‌روز کن
+  const updateUser = useCallback((userData) => {
+    setUser(userData);
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );
