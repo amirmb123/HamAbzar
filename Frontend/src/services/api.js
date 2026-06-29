@@ -18,7 +18,6 @@ import {
   mockToolDetail,
   mockAvailability,
   mockToolReviews,
-  mockRelatedTools,
   mockAdminKpis,
   mockRentalTrend,
   mockPendingApprovals,
@@ -162,16 +161,6 @@ export async function fetchToolReviews(id) {
   // ⚠️ بک‌اند هنوز GET /api/tools/<id>/reviews/ ندارد — فعلاً mock
   await delay(300);
   return mockToolReviews.data;
-}
-
-/**
- * GET /api/tools/<id>/related/
- * @param {number} id
- */
-export async function fetchRelatedTools(id) {
-  // ⚠️ بک‌اند هنوز GET /api/tools/<id>/related/ ندارد — فعلاً mock
-  await delay(300);
-  return mockRelatedTools.data;
 }
 
 /**

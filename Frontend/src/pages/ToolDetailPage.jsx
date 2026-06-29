@@ -9,7 +9,6 @@ import OwnerCard from "../components/tools/OwnerCard";
 import AvailabilityCalendar from "../components/tools/AvailabilityCalendar";
 import ReservationCard from "../components/tools/ReservationCard";
 import ReviewsSection from "../components/tools/ReviewsSection";
-import RelatedTools from "../components/tools/RelatedTools";
 import StateMessage from "../components/common/StateMessage";
 import { jalaliToIsoString, jalaliMonthLength } from "../utils/jalali";
 import { shiftMonth } from "../utils/calendarLogic";
@@ -31,8 +30,6 @@ export default function ToolDetailPage() {
     fetchAvailabilityForMonths,
     reviewsData,
     reviewsStatus,
-    relatedTools,
-    relatedStatus,
   } = useToolDetail(id);
 
   const [range, setRange] = useState({ start: null, end: null });
@@ -91,8 +88,6 @@ export default function ToolDetailPage() {
           />
 
           <ReviewsSection reviewsData={reviewsData} status={reviewsStatus} />
-
-          <RelatedTools tools={relatedTools} status={relatedStatus} />
         </div>
 
         {/* ستون کناری (رزرو) */}

@@ -3,7 +3,6 @@ import {
   fetchToolDetail,
   fetchToolAvailability,
   fetchToolReviews,
-  fetchRelatedTools,
 } from "../services/api";
 import { getTodayJalali } from "../utils/jalali";
 
@@ -33,11 +32,9 @@ export function useToolDetail(toolId) {
   const [tool, setTool] = useState(null);
   const [bookedDates, setBookedDates] = useState([]);
   const [reviewsData, setReviewsData] = useState(null);
-  const [relatedTools, setRelatedTools] = useState([]);
 
   const [toolStatus, setToolStatus] = useState("loading"); // loading | success | error
   const [reviewsStatus, setReviewsStatus] = useState("loading");
-  const [relatedStatus, setRelatedStatus] = useState("loading");
 
   /**
    * هر بار که کاربر در تقویم ماه را عوض کند، این تابع صدا زده می‌شود.
@@ -94,17 +91,6 @@ export function useToolDetail(toolId) {
         if (!cancelled) setReviewsStatus("error");
       });
 
-    setRelatedStatus("loading");
-    fetchRelatedTools(toolId)
-      .then((data) => {
-        if (cancelled) return;
-        setRelatedTools(data);
-        setRelatedStatus("success");
-      })
-      .catch(() => {
-        if (!cancelled) setRelatedStatus("error");
-      });
-
     return () => {
       cancelled = true;
     };
@@ -117,7 +103,5 @@ export function useToolDetail(toolId) {
     fetchAvailabilityForMonths, // ← export می‌شه تا تقویم بتونه ماه جدید fetch کنه
     reviewsData,
     reviewsStatus,
-    relatedTools,
-    relatedStatus,
   };
 }

@@ -565,17 +565,6 @@ export const mockPendingApprovals = [
   },
 ];
 
-// ─── ابزارهای مشابه (GET /api/tools/<id>/related/) ──────────
-// ⚠️ این بخش هم قبلاً وجود نداشت؛ برای بخش «ابزارهای مشابه» اضافه شده.
-export const mockRelatedTools = {
-  status: "success",
-  data: [
-    { id: 21, name: "دریل مکیتا ۱۳mm", daily_price: 35000 },
-    { id: 22, name: "دریل دیوالت ۲۰ ولت", daily_price: 55000 },
-    { id: 23, name: "فرز آنگولر بوش", daily_price: 40000 },
-  ],
-};
-
 // ─── status های ممکن برای رزرو ───────────────────────────────
 // pending   → در انتظار تأیید صاحب ابزار
 // confirmed → تأیید شده، منتظر تحویل
