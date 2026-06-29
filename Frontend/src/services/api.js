@@ -19,9 +19,6 @@ import {
   mockAvailability,
   mockToolReviews,
   mockRelatedTools,
-  mockConversations,
-  mockConversationMessages,
-  mockReviewTags,
   mockAdminKpis,
   mockRentalTrend,
   mockPendingApprovals,
@@ -257,6 +254,24 @@ export async function fetchMyRentals() {
 }
 
 /**
+ * GET /api/rentals/<id>/
+ * جزئیات کامل یک رزرو — برخلاف fetchMyRentals/fetchMyToolRentals (که فقط
+ * snapshot ابزار/borrower رو دارن)، اینجا owner هم برمی‌گرده. برای فرم
+ * ثبت نظر لازم است چون باید id طرف مقابل (reviewed_id) رو بدونیم.
+ * @param {number} rentalId
+ */
+export async function fetchRentalDetail(rentalId) {
+  try {
+    const res = await axiosClient.get(`/rentals/${rentalId}/`);
+    return res.data.data;
+  } catch (err) {
+    if (!err.response) throw new ApiError("network_error", "اتصال به سرور ممکن نیست.");
+    if (err.response.status === 404) throw new ApiError("not_found", "رزرو پیدا نشد.");
+    throw new ApiError("server_error", "خطا در دریافت اطلاعات رزرو.");
+  }
+}
+
+/**
  * GET /api/rentals/my-tools/
  * @returns {Promise<Array>}
  */
@@ -314,41 +329,56 @@ export async function cancelRental(rentalId) {
   }
 }
 
-/** GET /api/chat/conversations/ */
-export async function fetchConversations() {
-  await delay(300);
-  return mockConversations.data;
+/**
+ * GET /api/rentals/<id>/messages/
+ * بک‌اند مفهوم «لیست گفتگوها» ندارد — هر چت فقط مال یک رزرو خاص است.
+ * این endpoint با polling هر ۵ ثانیه صدا زده می‌شود (طبق طراحی بک‌اند).
+ * @param {number} rentalId
+ * @returns {Promise<Array>} - هر پیام: { id, sender_name, content, is_read, created_at }
+ */
+export async function fetchRentalMessages(rentalId) {
+  try {
+    const res = await axiosClient.get(`/rentals/${rentalId}/messages/`);
+    return res.data.data;
+  } catch (err) {
+    if (!err.response) throw new ApiError("network_error", "اتصال به سرور ممکن نیست.");
+    throw new ApiError("server_error", "خطا در دریافت پیام‌ها.");
+  }
 }
 
 /**
- * GET /api/chat/conversations/<id>/messages/
- * ⚠️ موقتی: mock فقط برای گفتگوی id=1 پیام واقعی دارد (همان دیتاست کامل
- * نمونه با انواع پیام). برای بقیه‌ی گفتگوها یک پیام عمومی برگردانده می‌شود
- * تا UI نشکند، چون mock فعلی محتوای کامل برای همه‌ی گفتگوها ندارد.
+ * POST /api/rentals/<id>/messages/
+ * @param {number} rentalId
+ * @param {string} content
+ * @returns {Promise<Object>} - پیام ثبت‌شده: { id, sender_name, content, is_read, created_at }
  */
-export async function fetchConversationMessages(conversationId) {
-  await delay(300);
-  if (Number(conversationId) === 1) {
-    return mockConversationMessages.data;
+export async function sendRentalMessage(rentalId, content) {
+  try {
+    const res = await axiosClient.post(`/rentals/${rentalId}/messages/`, { content });
+    return res.data.data;
+  } catch (err) {
+    if (!err.response) throw new ApiError("network_error", "اتصال به سرور ممکن نیست.");
+    throw new ApiError("bad_request", err.response.data?.message || "ارسال پیام ناموفق بود.");
   }
-  return { rental_context: null, messages: [] };
-}
-
-/** GET /api/reviews/tags/ */
-export async function fetchReviewTags() {
-  await delay(200);
-  return mockReviewTags;
 }
 
 /**
  * POST /api/rentals/<rental_id>/review/
+ * بک‌اند فقط rating و comment رو قبول می‌کند (ReviewCreateSerializer).
+ * reviewed_id باید id طرف مقابل رزرو باشد (owner یا borrower، بسته به نقش کاربر فعلی).
  * @param {number} rentalId
- * @param {Object} payload - { overall_rating, criteria, tags, comment, photos, is_public }
+ * @param {Object} payload - { reviewed_id, rating, comment }
  */
 export async function submitReview(rentalId, payload) {
-  await delay(500);
-  console.log(`[mock] ثبت نظر برای رزرو ${rentalId}:`, payload);
-  return { status: "success" };
+  try {
+    const res = await axiosClient.post(`/rentals/${rentalId}/review/`, payload);
+    return res.data;
+  } catch (err) {
+    if (!err.response) throw new ApiError("network_error", "اتصال به سرور ممکن نیست.");
+    const msg = err.response.data?.message;
+    const firstErr = typeof msg === "object" ? Object.values(msg).flat()[0] : msg;
+    throw new ApiError("bad_request", firstErr || "خطا در ثبت نظر.");
+  }
 }
 
 /**

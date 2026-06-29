@@ -32,7 +32,7 @@ function RentalActions({ rental, role, onCancel, onConfirm, onHandover, onMarkRe
         <Button variant="ghost" size="sm" onClick={() => onCancel?.(rental)}>
           لغو درخواست
         </Button>
-        <Link to="/chat">
+        <Link to={`/rentals/${rental.id}/chat`}>
           <Button variant="outline" size="sm">
             چت با صاحب
           </Button>
@@ -64,7 +64,7 @@ function RentalActions({ rental, role, onCancel, onConfirm, onHandover, onMarkRe
 
   if (status === "confirmed") {
     return (
-      <Link to="/chat">
+      <Link to={`/rentals/${rental.id}/chat`}>
         <Button size="sm">چت با صاحب</Button>
       </Link>
     );
@@ -80,7 +80,7 @@ function RentalActions({ rental, role, onCancel, onConfirm, onHandover, onMarkRe
 
   if (status === "active") {
     return (
-      <Link to="/chat">
+      <Link to={`/rentals/${rental.id}/chat`}>
         <Button size="sm">چت با صاحب</Button>
       </Link>
     );
@@ -89,18 +89,18 @@ function RentalActions({ rental, role, onCancel, onConfirm, onHandover, onMarkRe
   if (status === "returned") {
     return (
       <>
-        {!rental.has_review && role === "borrowed" && (
-          <Link to={`/rentals/${rental.id}/review`}>
-            <Button variant="outline" size="sm" icon="fa-regular fa-star">
-              ثبت امتیاز
+        <Link to={`/rentals/${rental.id}/review`}>
+          <Button variant="outline" size="sm" icon="fa-regular fa-star">
+            ثبت امتیاز
+          </Button>
+        </Link>
+        {role === "borrowed" && (
+          <Link to={`/tools/${rental.tool.id}`}>
+            <Button variant="ghost" size="sm">
+              اجاره مجدد
             </Button>
           </Link>
         )}
-        <Link to={`/tools/${rental.tool.id}`}>
-          <Button variant="ghost" size="sm">
-            اجاره مجدد
-          </Button>
-        </Link>
       </>
     );
   }

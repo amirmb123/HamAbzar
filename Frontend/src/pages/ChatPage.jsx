@@ -1,13 +1,15 @@
 import { useEffect, useRef } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useChat } from "../hooks/useChat";
+import { toJalali, formatJalaliMonthLabel } from "../utils/jalali";
+import { toPersianDigits } from "../utils/format";
 
-import ConversationsPanel from "../components/chat/ConversationsPanel";
 import ChatHeader from "../components/chat/ChatHeader";
 import ToolContextBanner from "../components/chat/ToolContextBanner";
 import MessageBubble from "../components/chat/MessageBubble";
 import DateSeparator from "../components/chat/DateSeparator";
-import TypingIndicator from "../components/chat/TypingIndicator";
 import ChatInputArea from "../components/chat/ChatInputArea";
+import Button from "../components/common/Button";
 
 /** برچسب گروه‌بندی روزانه برای جداکننده‌ی تاریخ */
 function getDayLabel(isoString) {
@@ -20,19 +22,24 @@ function getDayLabel(isoString) {
   return date.toLocaleDateString("fa-IR", { day: "numeric", month: "long", year: "numeric" });
 }
 
+function formatDateRangeLabel(startIso, endIso) {
+  const start = toJalali(startIso);
+  const end = toJalali(endIso);
+  const startMonth = formatJalaliMonthLabel(start.jy, start.jm).split(" ")[0];
+  const endMonth = formatJalaliMonthLabel(end.jy, end.jm).split(" ")[0];
+  const endYear = formatJalaliMonthLabel(end.jy, end.jm).split(" ")[1];
+  if (startMonth === endMonth) {
+    return `${toPersianDigits(start.jd)} تا ${toPersianDigits(end.jd)} ${endMonth} ${endYear}`;
+  }
+  return `${toPersianDigits(start.jd)} ${startMonth} تا ${toPersianDigits(end.jd)} ${endMonth} ${endYear}`;
+}
+
 export default function ChatPage() {
-  const {
-    conversations,
-    activeConversationId,
-    setActiveConversationId,
-    activeConversation,
-    messages,
-    rentalContext,
-    listStatus,
-    messagesStatus,
-    sendMessage,
-    currentUserId,
-  } = useChat();
+  const { rentalId } = useParams();
+  const navigate = useNavigate();
+
+  const { rental, rentalStatus, counterparty, messages, messagesStatus, sendMessage, isOwnMessage } =
+    useChat(rentalId);
 
   const scrollRef = useRef(null);
 
@@ -40,64 +47,69 @@ export default function ChatPage() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [messages]);
 
-  // گروه‌بندی پیام‌ها بر اساس روز برای نمایش جداکننده‌ی تاریخ
+  if (rentalStatus === "loading") {
+    return <div className="flex h-screen items-center justify-center text-gray-500">در حال بارگذاری...</div>;
+  }
+
+  if (rentalStatus === "error" || !rental || !counterparty) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center gap-4 text-gray-500">
+        <p>این گفتگو پیدا نشد یا دسترسی به آن ندارید.</p>
+        <Link to="/my-rentals">
+          <Button variant="outline">بازگشت به کرایه‌های من</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  // بنر بالای چت با همان شکلی که ToolContextBanner از قبل انتظار دارد
+  const rentalContext = {
+    tool: rental.tool,
+    booking_code: rental.id,
+    date_range_label: formatDateRangeLabel(rental.start_date, rental.end_date),
+    rental_id: rental.id,
+  };
+
   let lastDayLabel = null;
 
   return (
-    <div dir="rtl" className="flex h-screen overflow-hidden font-sans">
-      {/* پنجره اصلی چت */}
-      <div className="flex min-w-0 flex-1 flex-col bg-gray-50">
-        {activeConversation ? (
-          <>
-            <ChatHeader
-              counterparty={activeConversation.counterparty}
-              onBack={() => setActiveConversationId(null)}
-            />
-            <ToolContextBanner rentalContext={rentalContext} />
+    <div dir="rtl" className="flex h-screen flex-col overflow-hidden bg-gray-50 font-sans">
+      <ChatHeader counterparty={counterparty} onBack={() => navigate("/my-rentals")} />
+      <ToolContextBanner rentalContext={rentalContext} />
 
-            <div ref={scrollRef} className="thin-scrollbar flex flex-1 flex-col gap-3 overflow-y-auto p-5">
-              {messagesStatus === "loading" && (
-                <div className="py-12 text-center text-gray-400">در حال بارگذاری پیام‌ها...</div>
-              )}
-
-              {messagesStatus === "success" &&
-                messages.map((message) => {
-                  const dayLabel = getDayLabel(message.created_at);
-                  const showSeparator = dayLabel !== lastDayLabel;
-                  lastDayLabel = dayLabel;
-
-                  return (
-                    <div key={message.id} className="flex flex-col">
-                      {showSeparator && <DateSeparator label={dayLabel} />}
-                      <MessageBubble
-                        message={message}
-                        isOutgoing={message.sender_id === currentUserId}
-                        senderName={activeConversation.counterparty.full_name}
-                      />
-                    </div>
-                  );
-                })}
-
-              {activeConversation.is_typing && (
-                <TypingIndicator name={activeConversation.counterparty.full_name} />
-              )}
-            </div>
-
-            <ChatInputArea onSend={sendMessage} />
-          </>
-        ) : (
-          <div className="flex flex-1 items-center justify-center text-gray-400">
-            {listStatus === "loading" ? "در حال بارگذاری گفتگوها..." : "گفتگویی انتخاب نشده"}
-          </div>
+      <div ref={scrollRef} className="thin-scrollbar flex flex-1 flex-col gap-3 overflow-y-auto p-5">
+        {messagesStatus === "loading" && (
+          <div className="py-12 text-center text-gray-400">در حال بارگذاری پیام‌ها...</div>
         )}
+
+        {messagesStatus === "error" && (
+          <div className="py-12 text-center text-gray-400">پیام‌ها بارگذاری نشدند.</div>
+        )}
+
+        {messagesStatus === "success" && messages.length === 0 && (
+          <div className="py-12 text-center text-gray-400">هنوز پیامی ارسال نشده — گفتگو را شروع کنید.</div>
+        )}
+
+        {messagesStatus === "success" &&
+          messages.map((message) => {
+            const dayLabel = getDayLabel(message.created_at);
+            const showSeparator = dayLabel !== lastDayLabel;
+            lastDayLabel = dayLabel;
+
+            return (
+              <div key={message.id} className="flex flex-col">
+                {showSeparator && <DateSeparator label={dayLabel} />}
+                <MessageBubble
+                  message={message}
+                  isOutgoing={isOwnMessage(message)}
+                  senderName={counterparty.full_name}
+                />
+              </div>
+            );
+          })}
       </div>
 
-      {/* پنل لیست گفتگوها (سمت راست، چون RTL) */}
-      <ConversationsPanel
-        conversations={conversations}
-        activeId={activeConversationId}
-        onSelect={setActiveConversationId}
-      />
+      <ChatInputArea onSend={sendMessage} />
     </div>
   );
 }

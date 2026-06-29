@@ -1,65 +1,81 @@
-import { useEffect, useState, useCallback } from "react";
-import { fetchConversations, fetchConversationMessages } from "../services/api";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { fetchRentalDetail, fetchRentalMessages, sendRentalMessage } from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
-const CURRENT_USER_ID = 101; // علی رضایی — مطابق mockCurrentUser.id
+// طبق طراحی بک‌اند، چت realtime/وب‌سوکت نیست — لیست پیام‌ها هر ۵ ثانیه poll می‌شود.
+const POLL_INTERVAL_MS = 5000;
 
-export function useChat() {
-  const [conversations, setConversations] = useState([]);
-  const [activeConversationId, setActiveConversationId] = useState(null);
+/**
+ * چت مخصوص یک رزرو (نه یک inbox سراسری — بک‌اند مفهوم «گفتگو»ی مستقل ندارد).
+ * @param {number|string} rentalId
+ */
+export function useChat(rentalId) {
+  const { user } = useAuth();
+
+  const [rental, setRental] = useState(null);
+  const [rentalStatus, setRentalStatus] = useState("loading");
+
   const [messages, setMessages] = useState([]);
-  const [rentalContext, setRentalContext] = useState(null);
+  const [messagesStatus, setMessagesStatus] = useState("loading");
 
-  const [listStatus, setListStatus] = useState("loading");
-  const [messagesStatus, setMessagesStatus] = useState("idle");
+  const pollRef = useRef(null);
 
+  // جزئیات رزرو (شامل owner/borrower) — یک‌بار لود می‌شود
   useEffect(() => {
-    fetchConversations()
+    setRentalStatus("loading");
+    fetchRentalDetail(rentalId)
       .then((data) => {
-        setConversations(data);
-        setListStatus("success");
-        if (data.length > 0) setActiveConversationId(data[0].id);
+        setRental(data);
+        setRentalStatus("success");
       })
-      .catch(() => setListStatus("error"));
-  }, []);
+      .catch(() => setRentalStatus("error"));
+  }, [rentalId]);
 
-  useEffect(() => {
-    if (!activeConversationId) return;
-    setMessagesStatus("loading");
-    fetchConversationMessages(activeConversationId)
+  // لود پیام‌ها + polling
+  const loadMessages = useCallback(() => {
+    fetchRentalMessages(rentalId)
       .then((data) => {
-        setMessages(data.messages);
-        setRentalContext(data.rental_context);
+        setMessages(data);
         setMessagesStatus("success");
       })
       .catch(() => setMessagesStatus("error"));
-  }, [activeConversationId]);
+  }, [rentalId]);
 
-  const sendMessage = useCallback((content) => {
-    // فعلاً فقط به state محلی اضافه می‌شه — وقتی Chat API واقعی (وب‌سوکت یا
-    // پولینگ) وصل شد، اینجا باید POST بزنه و پیام را از پاسخ سرور بگیره.
-    const newMessage = {
-      id: Date.now(),
-      sender_id: CURRENT_USER_ID,
-      type: "text",
-      content,
-      created_at: new Date().toISOString(),
-      is_read: false,
-    };
-    setMessages((prev) => [...prev, newMessage]);
-  }, []);
+  useEffect(() => {
+    loadMessages();
+    pollRef.current = setInterval(loadMessages, POLL_INTERVAL_MS);
+    return () => clearInterval(pollRef.current);
+  }, [loadMessages]);
 
-  const activeConversation = conversations.find((c) => c.id === activeConversationId) || null;
+  const sendMessage = useCallback(
+    async (content) => {
+      try {
+        const newMessage = await sendRentalMessage(rentalId, content);
+        setMessages((prev) => [...prev, newMessage]);
+      } catch (err) {
+        // فعلاً فقط لاگ می‌شود — می‌توان بعداً toast خطا اضافه کرد
+        console.error("[chat] ارسال پیام ناموفق:", err);
+      }
+    },
+    [rentalId]
+  );
+
+  // طرف مقابل این رزرو، بر اساس نقش کاربر فعلی (borrower یا owner)
+  const counterparty =
+    rental && user ? (user.id === rental.borrower.id ? rental.owner : rental.borrower) : null;
+
+  // ⚠️ MessageSerializer سمت بک‌اند فقط sender_name برمی‌گرداند، نه sender_id.
+  // چون هر چت رزرو دقیقاً بین دو نفر مشخص (borrower/owner) است، تشخیص پیام
+  // «من» با مقایسه‌ی نام کاربر فعلی با sender_name انجام می‌شود.
+  const isOwnMessage = useCallback((message) => message.sender_name === user?.full_name, [user]);
 
   return {
-    conversations,
-    activeConversationId,
-    setActiveConversationId,
-    activeConversation,
+    rental,
+    rentalStatus,
+    counterparty,
     messages,
-    rentalContext,
-    listStatus,
     messagesStatus,
     sendMessage,
-    currentUserId: CURRENT_USER_ID,
+    isOwnMessage,
   };
 }

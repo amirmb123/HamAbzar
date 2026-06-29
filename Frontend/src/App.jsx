@@ -22,7 +22,7 @@ function App() {
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/checkout/:id" element={<CheckoutPage />} />
           <Route path="/my-rentals" element={<MyRentalsPage />} />
-          <Route path="/chat" element={<ChatPage />} />
+          <Route path="/rentals/:rentalId/chat" element={<ChatPage />} />
           <Route path="/rentals/:rentalId/review" element={<ReviewFormPage />} />
           <Route path="/admin" element={<AdminDashboardPage />} />
           <Route path="/admin/tools" element={<AdminToolsPage />} />

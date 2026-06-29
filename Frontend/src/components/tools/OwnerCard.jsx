@@ -5,7 +5,7 @@ function getInitials(fullName) {
   return parts.length >= 2 ? parts[0][0] + parts[1][0] : fullName.slice(0, 2);
 }
 
-export default function OwnerCard({ owner, onChatClick }) {
+export default function OwnerCard({ owner }) {
   return (
     <div className="mb-4 flex items-center gap-3 rounded-lg bg-gray-50 p-3.5">
       <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-100 text-lg font-medium text-primary-700">
@@ -33,14 +33,6 @@ export default function OwnerCard({ owner, onChatClick }) {
           )}
         </div>
       </div>
-
-      <button
-        onClick={onChatClick}
-        className="flex items-center gap-1.5 rounded-md border border-primary-600 px-3.5 py-1.5 text-xs text-primary-600 transition hover:bg-primary-50"
-      >
-        <i className="fa-regular fa-comment" />
-        چت
-      </button>
     </div>
   );
 }

@@ -52,7 +52,7 @@ export default function ToolDetailPage() {
           <ToolInfoSection tool={tool} reviewsCount={reviewsData?.total_count} />
 
           <h2 className="mb-2.5 mt-5 text-lg font-medium text-gray-900">صاحب ابزار</h2>
-          <OwnerCard owner={tool.owner} onChatClick={() => navigate("/chat")} />
+          <OwnerCard owner={tool.owner} />
 
           <h2 className="mb-2.5 mt-5 text-lg font-medium text-gray-900">تقویم دسترسی</h2>
           <AvailabilityCalendar bookedDates={bookedDates} range={range} onRangeChange={setRange} />

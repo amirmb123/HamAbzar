@@ -1,17 +1,14 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useReviewForm } from "../hooks/useReviewForm";
-import { fetchMyRentals, fetchReviewTags } from "../services/api";
+import { fetchRentalDetail } from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 import Button from "../components/common/Button";
 import RentalRecap from "../components/reviews/RentalRecap";
 import StarRatingInput from "../components/reviews/StarRatingInput";
 import RatingLabel from "../components/reviews/RatingLabel";
-import CriteriaRatingList from "../components/reviews/CriteriaRatingList";
-import TagSelectGrid from "../components/reviews/TagSelectGrid";
 import CommentTextarea from "../components/reviews/CommentTextarea";
-import PhotoUploadRow from "../components/reviews/PhotoUploadRow";
-import AnonymousToggle from "../components/reviews/AnonymousToggle";
 import { toJalali, formatJalaliMonthLabel } from "../utils/jalali";
 import { toPersianDigits } from "../utils/format";
 
@@ -30,40 +27,38 @@ function formatDateRangeLabel(startIso, endIso) {
 export default function ReviewFormPage() {
   const { rentalId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [rental, setRental] = useState(null);
-  const [reviewTags, setReviewTags] = useState([]);
   const [loadStatus, setLoadStatus] = useState("loading");
 
   useEffect(() => {
-    Promise.all([fetchMyRentals(null), fetchReviewTags()])
-      .then(([rentals, tags]) => {
-        const found = rentals.find((r) => r.id === Number(rentalId));
-        setRental(found || null);
-        setReviewTags(tags);
-        setLoadStatus(found ? "success" : "error");
+    fetchRentalDetail(rentalId)
+      .then((data) => {
+        setRental(data);
+        setLoadStatus("success");
       })
       .catch(() => setLoadStatus("error"));
   }, [rentalId]);
 
+  // طرف مقابل رزرو: اگه کاربر فعلی اجاره‌گیرنده است، طرف مقابل صاحب ابزاره و برعکس.
+  const counterparty =
+    rental && user
+      ? user.id === rental.borrower.id
+        ? rental.owner
+        : rental.borrower
+      : null;
+
   const {
     overallRating,
     setOverallRating,
-    criteriaRatings,
-    setCriterionRating,
-    selectedTags,
-    toggleTag,
     comment,
     setComment,
-    photos,
-    addPhoto,
-    removePhoto,
-    isPublic,
-    setIsPublic,
     isSubmitting,
     canSubmit,
+    error,
     submit,
-  } = useReviewForm(rentalId);
+  } = useReviewForm(rentalId, counterparty?.id);
 
   const handleSubmit = async () => {
     const result = await submit();
@@ -76,7 +71,7 @@ export default function ReviewFormPage() {
     return <div className="flex h-screen items-center justify-center text-gray-500">در حال بارگذاری...</div>;
   }
 
-  if (loadStatus === "error" || !rental) {
+  if (loadStatus === "error" || !rental || !counterparty) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-4 text-gray-500">
         <p>این رزرو پیدا نشد یا قابل نظر دادن نیست.</p>
@@ -109,7 +104,7 @@ export default function ReviewFormPage() {
       <div className="mx-auto max-w-[600px] px-6 py-8">
         <RentalRecap
           toolName={rental.tool.name}
-          ownerName={rental.owner.full_name}
+          ownerName={counterparty.full_name}
           dateRangeLabel={formatDateRangeLabel(rental.start_date, rental.end_date)}
         />
 
@@ -124,20 +119,9 @@ export default function ReviewFormPage() {
 
           <div className="my-6 h-px bg-gray-100" />
 
-          <CriteriaRatingList values={criteriaRatings} onChange={setCriterionRating} />
-
-          <div className="my-6 h-px bg-gray-100" />
-
-          <label className="mb-3 block text-sm font-medium text-gray-900">
-            چه نکاتی برجسته بود؟ (اختیاری)
-          </label>
-          <TagSelectGrid tags={reviewTags} selectedTags={selectedTags} onToggle={toggleTag} />
-
           <CommentTextarea value={comment} onChange={setComment} />
 
-          <PhotoUploadRow photos={photos} onAdd={addPhoto} onRemove={removePhoto} />
-
-          <AnonymousToggle isPublic={isPublic} onChange={setIsPublic} />
+          {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
 
           <div className="flex gap-2">
             <Link to="/my-rentals" className="flex-1">

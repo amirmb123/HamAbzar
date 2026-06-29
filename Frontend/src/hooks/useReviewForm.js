@@ -1,41 +1,34 @@
 import { useState } from "react";
 import { submitReview } from "../services/api";
 
-export function useReviewForm(rentalId) {
+/**
+ * فرم ساده‌ی ثبت نظر — فقط ستاره (rating) و کامنت، مطابق دقیق با
+ * ReviewCreateSerializer سمت بک‌اند که فقط همین دو فیلد رو قبول می‌کند.
+ * @param {number} rentalId
+ * @param {number|null} reviewedId - id طرف مقابل رزرو (owner یا borrower)
+ */
+export function useReviewForm(rentalId, reviewedId) {
   const [overallRating, setOverallRating] = useState(0);
-  const [criteriaRatings, setCriteriaRatings] = useState({});
-  const [selectedTags, setSelectedTags] = useState([]);
   const [comment, setComment] = useState("");
-  const [photos, setPhotos] = useState([]);
-  const [isPublic, setIsPublic] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
 
-  const toggleTag = (tag) => {
-    setSelectedTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
-  };
-
-  const setCriterionRating = (key, value) => {
-    setCriteriaRatings((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const addPhoto = (url) => setPhotos((prev) => [...prev, url]);
-  const removePhoto = (idx) => setPhotos((prev) => prev.filter((_, i) => i !== idx));
-
-  const canSubmit = overallRating > 0;
+  const canSubmit = overallRating > 0 && !!reviewedId;
 
   const submit = async () => {
     if (!canSubmit) return { success: false };
     setIsSubmitting(true);
+    setError(null);
     try {
       await submitReview(rentalId, {
-        overall_rating: overallRating,
-        criteria: criteriaRatings,
-        tags: selectedTags,
+        reviewed_id: reviewedId,
+        rating: overallRating,
         comment,
-        photos,
-        is_public: isPublic,
       });
       return { success: true };
+    } catch (err) {
+      setError(err.message || "خطا در ثبت نظر.");
+      return { success: false };
     } finally {
       setIsSubmitting(false);
     }
@@ -44,19 +37,11 @@ export function useReviewForm(rentalId) {
   return {
     overallRating,
     setOverallRating,
-    criteriaRatings,
-    setCriterionRating,
-    selectedTags,
-    toggleTag,
     comment,
     setComment,
-    photos,
-    addPhoto,
-    removePhoto,
-    isPublic,
-    setIsPublic,
     isSubmitting,
     canSubmit,
+    error,
     submit,
   };
 }
