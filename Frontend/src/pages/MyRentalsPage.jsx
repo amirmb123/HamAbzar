@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMyRentals } from "../hooks/useMyRentals";
 import AppHeader from "../components/layout/AppHeader";
 import RoleTabs from "../components/rentals/RoleTabs";
 import StatusFilterChips from "../components/rentals/StatusFilterChips";
 import RentalCard from "../components/rentals/RentalCard";
+import ConfirmReturnModal from "../components/rentals/ConfirmReturnModal";
 import StateMessage from "../components/common/StateMessage";
 
 export default function MyRentalsPage() {
@@ -18,11 +20,15 @@ export default function MyRentalsPage() {
     lentCount,
     status,
     refetch,
+    actionError,
     confirm,
     handover,
     markReturned,
     cancel,
   } = useMyRentals();
+
+  // رزروی که منتظر تایید نهایی صاحب ابزار برای ثبت بازگشت است (یا null)
+  const [returnTarget, setReturnTarget] = useState(null);
 
   const handleCancel = (rental) => {
     cancel(rental.id);
@@ -37,7 +43,13 @@ export default function MyRentalsPage() {
   };
 
   const handleMarkReturned = (rental) => {
-    markReturned(rental.id);
+    setReturnTarget(rental);
+  };
+
+  const confirmReturn = async () => {
+    const ok = await markReturned(returnTarget.id);
+    if (!ok) throw new Error(actionError || "ثبت بازگشت ناموفق بود.");
+    setReturnTarget(null);
   };
 
   return (
@@ -80,6 +92,14 @@ export default function MyRentalsPage() {
             />
           ))}
       </div>
+
+      {returnTarget && (
+        <ConfirmReturnModal
+          toolName={returnTarget.tool.name}
+          onConfirm={confirmReturn}
+          onCancel={() => setReturnTarget(null)}
+        />
+      )}
     </div>
   );
 }
