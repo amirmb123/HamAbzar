@@ -37,7 +37,7 @@ const NAV_GROUPS = [
 
 // ⚠️ فقط آیتم‌هایی که واقعاً صفحه دارند اینجا فعال هستند. بقیه فعلاً غیرفعال
 // (بدون onClick) هستند چون هنوز طراحی/پیاده‌سازی نشده‌اند.
-const ENABLED_ITEM_IDS = ["overview", "tools", "disputes"];
+const ENABLED_ITEM_IDS = ["disputes"];
 
 export default function AdminSidebar({ activeItemId, onSelect, pendingToolsCount = 0, pendingDisputesCount = 0 }) {
   return (

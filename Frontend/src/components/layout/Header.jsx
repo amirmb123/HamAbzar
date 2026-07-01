@@ -68,6 +68,15 @@ export default function Header({ searchValue, onSearchChange }) {
             {user ? (
               // کاربر لاگین کرده
               <div className="flex items-center gap-2">
+                {user.is_admin && (
+                  <Link
+                    to="/admin/disputes"
+                    className="flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-900 transition hover:bg-gray-50"
+                  >
+                    <i className="fa-solid fa-gauge" />
+                    <span className="hidden sm:inline">پنل مدیریت</span>
+                  </Link>
+                )}
                 <Link
                   to="/profile"
                   className="flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-900 transition hover:bg-gray-50"

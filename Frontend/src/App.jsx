@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import HomePage from "./pages/HomePage";
 import ToolDetailPage from "./pages/ToolDetailPage";
@@ -10,9 +10,8 @@ import ProfilePage from "./pages/ProfilePage";
 import ChatPage from "./pages/ChatPage";
 import ReviewFormPage from "./pages/ReviewFormPage";
 import ToolFormPage from "./pages/ToolFormPage";
-import AdminDashboardPage from "./pages/AdminDashboardPage";
-import AdminToolsPage from "./pages/AdminToolsPage";
 import AdminDisputesPage from "./pages/AdminDisputesPage";
+import AdminRoute from "./components/admin/AdminRoute";
 
 function App() {
   return (
@@ -29,9 +28,32 @@ function App() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/rentals/:rentalId/chat" element={<ChatPage />} />
           <Route path="/rentals/:rentalId/review" element={<ReviewFormPage />} />
-          <Route path="/admin" element={<AdminDashboardPage />} />
-          <Route path="/admin/tools" element={<AdminToolsPage />} />
-          <Route path="/admin/disputes" element={<AdminDisputesPage />} />
+          {/* فقط پنل شکایت‌ها (disputes) بک‌اندش آماده‌ست؛ بقیه‌ی صفحات ادمین
+              فعلاً غیرفعالن و به این صفحه ریدایرکت میشن تا بک‌اندشون آماده بشه. */}
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <Navigate to="/admin/disputes" replace />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/tools"
+            element={
+              <AdminRoute>
+                <Navigate to="/admin/disputes" replace />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/disputes"
+            element={
+              <AdminRoute>
+                <AdminDisputesPage />
+              </AdminRoute>
+            }
+          />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

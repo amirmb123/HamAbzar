@@ -52,7 +52,8 @@ export function useAuthFlow() {
       if (res.next === "login") {
         // کاربر قدیمی — توکن + اطلاعات کاربر آماده‌ست
         login(res.data.user, { access: res.data.access, refresh: res.data.refresh });
-        navigate("/", { replace: true });
+        // ادمین‌ها مستقیم به پنل مدیریت هدایت میشن
+        navigate(res.data.user?.is_admin ? "/admin/disputes" : "/", { replace: true });
       } else if (res.next === "register") {
         setTempToken(res.data.temp_token);
         setStep("register");
@@ -79,7 +80,7 @@ export function useAuthFlow() {
       });
       // کاربر جدید — توکن + اطلاعات کاربر آماده‌ست
       login(res.data.user, { access: res.data.access, refresh: res.data.refresh });
-      navigate("/", { replace: true });
+      navigate(res.data.user?.is_admin ? "/admin/disputes" : "/", { replace: true });
     } catch (err) {
       setErrorMessage(err.message || "خطا در ثبت‌نام. دوباره تلاش کنید.");
     } finally {
