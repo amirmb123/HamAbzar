@@ -29,6 +29,11 @@ const VARIANTS = {
     desc: "ابزارهایی که برای اجاره ثبت می‌کنید اینجا نمایش داده می‌شوند",
     actionLabel: "ثبت اولین ابزار",
   },
+  emptyTransactions: {
+    icon: "fa-solid fa-receipt",
+    title: "تراکنشی ثبت نشده",
+    desc: "پرداخت‌ها و واریزهای کیف پول شما اینجا نمایش داده می‌شوند",
+  },
 };
 
 export default function StateMessage({ variant, onAction }) {

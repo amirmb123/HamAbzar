@@ -671,9 +671,25 @@ export async function resolveDispute(disputeId, payload) {
   }
 }
 
+/**
+ * GET /api/rentals/transactions/
+ * تاریخچه‌ی تراکنش‌های مالی کاربر لاگین‌شده (واریز/برداشت کیف پول).
+ * @param {Object} params - { type?, direction?, page? }
+ * @returns {Promise<{items: Array, pagination: {count, next, previous}}>}
+ */
+export async function fetchMyTransactions(params = {}) {
+  try {
+    const res = await axiosClient.get("/rentals/transactions/", { params });
+    return { items: res.data.data, pagination: res.data.pagination };
+  } catch (err) {
+    if (!err.response) throw new ApiError("network_error", "اتصال به سرور ممکن نیست.");
+    throw new ApiError("server_error", "خطا در دریافت تراکنش‌ها.");
+  }
+}
+
 export class ApiError extends Error {
   constructor(type, message) {
     super(message);
     this.type = type;
   }
-}3
+}

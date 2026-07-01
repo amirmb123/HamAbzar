@@ -26,6 +26,9 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, AllowAny
 
+from django.db.models import Q
+from rest_framework.pagination import PageNumberPagination
+
 from .models import Rental, Transaction, Review
 from .serializers import (
     RentalListSerializer,
@@ -34,6 +37,7 @@ from .serializers import (
     ReviewCreateSerializer,
     ToolReviewSerializer,
     MessageSerializer,
+    TransactionSerializer,
 )
 from chat.models import Message
 from accounts.models import User
@@ -182,6 +186,56 @@ class MyRentalsView(APIView):
 # ─────────────────────────────────────────────
 # My Tool Rentals (as owner)
 # ─────────────────────────────────────────────
+
+class TransactionsPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
+class MyTransactionsView(APIView):
+    """
+    GET /api/rentals/transactions/
+
+    تاریخچه‌ی تراکنش‌های مالی کاربر لاگین‌شده (واریز و برداشت کیف پول).
+    Query params:
+      - type: فیلتر بر اساس نوع تراکنش (rental_payment, deposit_hold, deposit_return, deposit_penalty)
+      - direction: فیلتر بر اساس جهت تراکنش (credit, debit)
+    صفحه‌بندی‌شده و مرتب‌شده از جدید به قدیم.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        qs = Transaction.objects.filter(
+            Q(from_user=user) | Q(to_user=user)
+        ).select_related(
+            'rental', 'rental__tool', 'from_user', 'to_user'
+        ).order_by('-created_at')
+
+        type_param = request.query_params.get('type')
+        if type_param:
+            qs = qs.filter(type=type_param)
+
+        direction_param = request.query_params.get('direction')
+        if direction_param == 'credit':
+            qs = qs.filter(to_user=user)
+        elif direction_param == 'debit':
+            qs = qs.filter(from_user=user)
+
+        paginator = TransactionsPagination()
+        page = paginator.paginate_queryset(qs, request)
+        serializer = TransactionSerializer(page, many=True, context={'request': request})
+        return Response({
+            'status': 'success',
+            'data': serializer.data,
+            'pagination': {
+                'count': paginator.page.paginator.count,
+                'next': paginator.get_next_link(),
+                'previous': paginator.get_previous_link(),
+            },
+        })
+
 
 class MyToolRentalsView(APIView):
     """GET /api/rentals/my-tools/"""

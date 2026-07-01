@@ -25,3 +25,11 @@ export function formatDistance(km) {
 export function formatRating(rating) {
   return toPersianDigits(Number(rating).toFixed(1));
 }
+
+/** فرمت تاریخ و ساعت شمسی → "۱۲ خرداد ۱۴۰۴ - ۱۴:۳۰" */
+export function formatDateTime(iso) {
+  const date = new Date(iso);
+  const datePart = date.toLocaleDateString("fa-IR", { day: "numeric", month: "long", year: "numeric" });
+  const timePart = date.toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" });
+  return `${datePart} - ${timePart}`;
+}

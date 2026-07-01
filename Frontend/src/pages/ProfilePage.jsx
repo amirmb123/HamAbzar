@@ -8,6 +8,7 @@ import AppHeader from "../components/layout/AppHeader";
 import Avatar from "../components/common/Avatar";
 import FormField from "../components/common/FormField";
 import Button from "../components/common/Button";
+import TransactionsSection from "../components/profile/TransactionsSection";
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -162,6 +163,10 @@ export default function ProfilePage() {
             </Button>
           </div>
         </form>
+
+        <div className="mt-6">
+          <TransactionsSection />
+        </div>
       </div>
     </div>
   );

@@ -27,6 +27,7 @@ urlpatterns = [
     path('',              views.RentalCreateView.as_view(),    name='rental-create'),
     path('my/',           views.MyRentalsView.as_view(),       name='my-rentals'),
     path('my-tools/',     views.MyToolRentalsView.as_view(),   name='my-tool-rentals'),
+    path('transactions/', views.MyTransactionsView.as_view(),  name='my-transactions'),
 
     # ── Single rental ────────────────────────
     path('<int:rental_id>/',          views.RentalDetailView.as_view(),   name='rental-detail'),

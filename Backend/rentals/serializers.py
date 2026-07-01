@@ -20,6 +20,45 @@ from tools.models import Tool
 
 
 # ─────────────────────────────────────────────
+# Transaction — List (for a specific user's wallet history)
+# ─────────────────────────────────────────────
+
+class TransactionSerializer(serializers.ModelSerializer):
+    """
+    نمایش یک تراکنش از دید کاربر لاگین‌شده.
+    - direction: آیا این تراکنش برای کاربر «واریز» بوده یا «برداشت»
+    - counterparty: طرف مقابل تراکنش (اگر باشد)
+    - tool_name / rental_id: برای لینک‌دادن به رزرو مربوطه در UI
+    """
+    type_display = serializers.CharField(source='get_type_display', read_only=True)
+    direction    = serializers.SerializerMethodField()
+    counterparty = serializers.SerializerMethodField()
+    tool_name    = serializers.CharField(source='rental.tool.name', read_only=True)
+    rental_id    = serializers.IntegerField(source='rental.id', read_only=True)
+
+    class Meta:
+        model  = Transaction
+        fields = [
+            'id', 'type', 'type_display', 'direction', 'amount',
+            'counterparty', 'rental_id', 'tool_name', 'note', 'created_at',
+        ]
+        read_only_fields = fields
+
+    def get_direction(self, obj):
+        user = self.context.get('request').user
+        if obj.to_user_id == user.id:
+            return 'credit'   # واریز به کیف پول کاربر
+        return 'debit'        # برداشت از کیف پول کاربر
+
+    def get_counterparty(self, obj):
+        user = self.context.get('request').user
+        other = obj.to_user if obj.from_user_id == user.id else obj.from_user
+        if not other:
+            return None
+        return {'id': other.id, 'full_name': other.full_name}
+
+
+# ─────────────────────────────────────────────
 # Nested helpers (read-only snapshots)
 # ─────────────────────────────────────────────
 
