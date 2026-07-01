@@ -608,6 +608,69 @@ export async function createRental(payload) {
     throw new ApiError("bad_request", firstErr || "خطا در ثبت رزرو.");
   }
 }
+/**
+ * POST /api/rentals/<id>/dispute/ — ثبت شکایت برای یک رزرو
+ * فقط طرفین رزرو (صاحب یا اجاره‌گیرنده) و فقط در وضعیت active/returned مجاز است.
+ * هر رزرو فقط یک شکایت می‌تواند داشته باشد (در صورت تکرار، بک‌اند ۴۰۹ برمی‌گرداند).
+ * @param {number} rentalId
+ * @param {string} reason - حداقل ۱۰ و حداکثر ۲۰۰۰ کاراکتر
+ */
+export async function createDispute(rentalId, reason) {
+  try {
+    const res = await axiosClient.post(`/rentals/${rentalId}/dispute/`, { reason });
+    return res.data;
+  } catch (err) {
+    if (!err.response) throw new ApiError("network_error", "اتصال به سرور ممکن نیست.");
+    if (err.response.status === 409) {
+      throw new ApiError("conflict", err.response.data?.message || "برای این رزرو قبلاً شکایت ثبت شده است.");
+    }
+    const msg = err.response.data?.message;
+    const firstErr = typeof msg === "object" ? Object.values(msg).flat()[0] : msg;
+    throw new ApiError("bad_request", firstErr || "خطا در ثبت شکایت.");
+  }
+}
+
+/**
+ * GET /api/disputes/?status=... — لیست همه‌ی شکایت‌ها (فقط ادمین)
+ * @param {string|null} statusFilter - 'open' | 'under_review' | 'resolved' | null (همه)
+ * @returns {Promise<Array>}
+ */
+export async function fetchDisputes(statusFilter = null) {
+  try {
+    const res = await axiosClient.get("/disputes/", {
+      params: statusFilter ? { status: statusFilter } : {},
+    });
+    // بک‌اند: { status: "success", results: [...] }
+    return res.data.results;
+  } catch (err) {
+    if (!err.response) throw new ApiError("network_error", "اتصال به سرور ممکن نیست.");
+    if (err.response.status === 403) {
+      throw new ApiError("forbidden", "دسترسی ادمین لازم است.");
+    }
+    throw new ApiError("server_error", "خطا در دریافت لیست شکایت‌ها.");
+  }
+}
+
+/**
+ * PATCH /api/disputes/<id>/resolve/ — رسیدگی و بستن شکایت (فقط ادمین)
+ * @param {number} disputeId
+ * @param {Object} payload - { resolution, penalty_amount }
+ */
+export async function resolveDispute(disputeId, payload) {
+  try {
+    const res = await axiosClient.patch(`/disputes/${disputeId}/resolve/`, payload);
+    return res.data;
+  } catch (err) {
+    if (!err.response) throw new ApiError("network_error", "اتصال به سرور ممکن نیست.");
+    if (err.response.status === 403) {
+      throw new ApiError("forbidden", "دسترسی ادمین لازم است.");
+    }
+    const msg = err.response.data?.message;
+    const firstErr = typeof msg === "object" ? Object.values(msg).flat()[0] : msg;
+    throw new ApiError("bad_request", firstErr || "خطا در رسیدگی به شکایت.");
+  }
+}
+
 export class ApiError extends Error {
   constructor(type, message) {
     super(message);

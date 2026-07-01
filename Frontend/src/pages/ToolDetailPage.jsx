@@ -71,9 +71,9 @@ export default function ToolDetailPage() {
 
       <GalleryViewer images={tool.images} isVerified={tool.is_verified} />
 
-      <div className="flex items-start gap-0 px-6 pb-6">
+      <div className="flex flex-col gap-6 px-4 pb-6 sm:px-6 lg:flex-row lg:items-start lg:gap-8">
         {/* ستون اصلی */}
-        <div className="min-w-0 flex-1 pl-6 pt-5">
+        <div className="min-w-0 flex-1 pt-5">
           <ToolInfoSection tool={tool} reviewsCount={reviewsData?.total_count} />
 
           <h2 className="mb-2.5 mt-5 text-lg font-medium text-gray-900">صاحب ابزار</h2>
@@ -91,7 +91,7 @@ export default function ToolDetailPage() {
         </div>
 
         {/* ستون کناری (رزرو) */}
-        <div className="w-[300px] min-w-[260px] shrink-0 pt-5">
+        <div className="w-full pt-5 lg:w-[300px] lg:min-w-[260px] lg:shrink-0">
           <ReservationCard tool={tool} range={range} onReserve={handleReserve} />
         </div>
       </div>

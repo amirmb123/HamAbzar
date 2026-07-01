@@ -6,6 +6,7 @@ import RoleTabs from "../components/rentals/RoleTabs";
 import StatusFilterChips from "../components/rentals/StatusFilterChips";
 import RentalCard from "../components/rentals/RentalCard";
 import ConfirmReturnModal from "../components/rentals/ConfirmReturnModal";
+import DisputeFormModal from "../components/rentals/DisputeFormModal";
 import StateMessage from "../components/common/StateMessage";
 
 export default function MyRentalsPage() {
@@ -25,10 +26,13 @@ export default function MyRentalsPage() {
     handover,
     markReturned,
     cancel,
+    fileDispute,
   } = useMyRentals();
 
   // رزروی که منتظر تایید نهایی صاحب ابزار برای ثبت بازگشت است (یا null)
   const [returnTarget, setReturnTarget] = useState(null);
+  // رزروی که در حال ثبت شکایت برای آن هستیم (یا null)
+  const [disputeTarget, setDisputeTarget] = useState(null);
 
   const handleCancel = (rental) => {
     cancel(rental.id);
@@ -50,6 +54,15 @@ export default function MyRentalsPage() {
     const ok = await markReturned(returnTarget.id);
     if (!ok) throw new Error(actionError || "ثبت بازگشت ناموفق بود.");
     setReturnTarget(null);
+  };
+
+  const handleOpenDispute = (rental) => {
+    setDisputeTarget(rental);
+  };
+
+  const confirmDispute = async (reason) => {
+    await fileDispute(disputeTarget.id, reason);
+    setDisputeTarget(null);
   };
 
   return (
@@ -89,6 +102,7 @@ export default function MyRentalsPage() {
               onConfirm={handleConfirm}
               onHandover={handleHandover}
               onMarkReturned={handleMarkReturned}
+              onDispute={handleOpenDispute}
             />
           ))}
       </div>
@@ -98,6 +112,14 @@ export default function MyRentalsPage() {
           toolName={returnTarget.tool.name}
           onConfirm={confirmReturn}
           onCancel={() => setReturnTarget(null)}
+        />
+      )}
+
+      {disputeTarget && (
+        <DisputeFormModal
+          rental={disputeTarget}
+          onConfirm={confirmDispute}
+          onCancel={() => setDisputeTarget(null)}
         />
       )}
     </div>

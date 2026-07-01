@@ -23,7 +23,7 @@ function formatDateRange(startIso, endIso) {
 }
 
 /** اکشن‌های متفاوت بر اساس وضعیت رزرو و نقش کاربر (گرفته/داده) */
-function RentalActions({ rental, role, onCancel, onConfirm, onHandover, onMarkReturned }) {
+function RentalActions({ rental, role, onCancel, onConfirm, onHandover, onMarkReturned, onDispute }) {
   const { status } = rental;
 
   if (status === "pending" && role === "borrowed") {
@@ -85,6 +85,9 @@ function RentalActions({ rental, role, onCancel, onConfirm, onHandover, onMarkRe
   if (status === "active" && role === "lent") {
     return (
       <>
+        <Button variant="ghost" size="sm" icon="fa-solid fa-flag" onClick={() => onDispute?.(rental)}>
+          ثبت شکایت
+        </Button>
         <Link to={`/rentals/${rental.id}/chat`}>
           <Button variant="outline" size="sm">
             چت با اجاره‌گیرنده
@@ -99,15 +102,23 @@ function RentalActions({ rental, role, onCancel, onConfirm, onHandover, onMarkRe
 
   if (status === "active") {
     return (
-      <Link to={`/rentals/${rental.id}/chat`}>
-        <Button size="sm">چت با صاحب</Button>
-      </Link>
+      <>
+        <Button variant="ghost" size="sm" icon="fa-solid fa-flag" onClick={() => onDispute?.(rental)}>
+          ثبت شکایت
+        </Button>
+        <Link to={`/rentals/${rental.id}/chat`}>
+          <Button size="sm">چت با صاحب</Button>
+        </Link>
+      </>
     );
   }
 
   if (status === "returned") {
     return (
       <>
+        <Button variant="ghost" size="sm" icon="fa-solid fa-flag" onClick={() => onDispute?.(rental)}>
+          ثبت شکایت
+        </Button>
         <Link to={`/rentals/${rental.id}/review`}>
           <Button variant="outline" size="sm" icon="fa-regular fa-star">
             ثبت امتیاز
@@ -143,7 +154,7 @@ function RentalActions({ rental, role, onCancel, onConfirm, onHandover, onMarkRe
   return null;
 }
 
-export default function RentalCard({ rental, role, onCancel, onConfirm, onHandover, onMarkReturned }) {
+export default function RentalCard({ rental, role, onCancel, onConfirm, onHandover, onMarkReturned, onDispute }) {
   const { tool, borrower, status, total_price } = rental;
   // در پاسخ فعلی بک‌اند، owner فقط در جزئیات رزرو (نه در لیست) برمی‌گردد؛
   // فعلاً برای نمایش طرف مقابل از borrower استفاده می‌کنیم و در نمای "گرفته‌ام"
@@ -215,6 +226,7 @@ export default function RentalCard({ rental, role, onCancel, onConfirm, onHandov
             onConfirm={onConfirm}
             onHandover={onHandover}
             onMarkReturned={onMarkReturned}
+            onDispute={onDispute}
           />
         </div>
       </div>

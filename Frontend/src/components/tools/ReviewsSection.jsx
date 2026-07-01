@@ -32,13 +32,13 @@ export default function ReviewsSection({ reviewsData, status }) {
       </div>
 
       {/* خلاصه امتیاز */}
-      <div className="mb-3.5 flex items-center gap-6 rounded-lg bg-gray-50 p-3.5">
+      <div className="mb-3.5 flex flex-col items-center gap-4 rounded-lg bg-gray-50 p-3.5 sm:flex-row sm:gap-6">
         <div className="text-center">
           <div className="text-4xl font-medium text-gray-900">{formatRating(average_rating)}</div>
           <div className="mt-0.5 text-base text-amber-500">★★★★★</div>
           <div className="mt-1 text-[11px] text-gray-500">از ۵</div>
         </div>
-        <div className="flex-1">
+        <div className="w-full flex-1">
           {[5, 4, 3, 2, 1].map((star) => (
             <div key={star} className="mb-1 flex items-center gap-2">
               <span className="min-w-4 text-center text-[11px] text-gray-500">
@@ -62,15 +62,19 @@ export default function ReviewsSection({ reviewsData, status }) {
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-100 text-sm font-medium text-primary-700">
               {getInitials(review.reviewer_name)}
             </div>
-            <div>
-              <div className="text-sm font-medium text-gray-900">{review.reviewer_name}</div>
+            <div className="min-w-0">
+              <div className="truncate text-sm font-medium text-gray-900">{review.reviewer_name}</div>
               <div className="text-xs text-gray-500">
                 {new Date(review.created_at).toLocaleDateString("fa-IR")}
               </div>
             </div>
           </div>
           <StarRow rating={review.rating} />
-          <p className="text-sm leading-6 text-gray-500">{review.comment}</p>
+          {review.comment && (
+            <p className="whitespace-pre-line break-words text-sm leading-6 text-gray-500">
+              {review.comment}
+            </p>
+          )}
         </div>
       ))}
     </div>

@@ -5,7 +5,7 @@ export default function ToolInfoSection({ tool, reviewsCount }) {
 
   return (
     <div>
-      <h1 className="mb-1.5 text-2xl font-medium text-gray-900">{name}</h1>
+      <h1 className="mb-1.5 break-words text-xl font-medium text-gray-900 sm:text-2xl">{name}</h1>
 
       <div className="mb-3.5 flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-1 text-xs text-gray-500">
@@ -34,18 +34,18 @@ export default function ToolInfoSection({ tool, reviewsCount }) {
       {description && (
         <>
           <h2 className="mb-2.5 mt-5 text-lg font-medium text-gray-900">توضیحات</h2>
-          <p className="text-base leading-7 text-gray-500">{description}</p>
+          <p className="whitespace-pre-line break-words text-base leading-7 text-gray-500">{description}</p>
         </>
       )}
 
       {specs?.length > 0 && (
         <>
           <h2 className="mb-2.5 mt-5 text-lg font-medium text-gray-900">مشخصات فنی</h2>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {specs.map((spec) => (
               <div key={spec.label} className="rounded-md bg-gray-50 px-3 py-2.5">
                 <div className="mb-0.5 text-xs text-gray-500">{spec.label}</div>
-                <div className="text-base font-medium text-gray-900">{spec.value}</div>
+                <div className="break-words text-base font-medium text-gray-900">{spec.value}</div>
               </div>
             ))}
           </div>

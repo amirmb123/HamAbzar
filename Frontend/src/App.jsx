@@ -12,6 +12,7 @@ import ReviewFormPage from "./pages/ReviewFormPage";
 import ToolFormPage from "./pages/ToolFormPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import AdminToolsPage from "./pages/AdminToolsPage";
+import AdminDisputesPage from "./pages/AdminDisputesPage";
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
           <Route path="/rentals/:rentalId/review" element={<ReviewFormPage />} />
           <Route path="/admin" element={<AdminDashboardPage />} />
           <Route path="/admin/tools" element={<AdminToolsPage />} />
+          <Route path="/admin/disputes" element={<AdminDisputesPage />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

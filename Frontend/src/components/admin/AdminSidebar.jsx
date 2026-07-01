@@ -21,6 +21,7 @@ const NAV_GROUPS = [
     label: "عملیات",
     items: [
       { id: "rentals", icon: "fa-regular fa-calendar-check", title: "رزروها" },
+      { id: "disputes", icon: "fa-solid fa-gavel", title: "شکایت‌ها" },
       { id: "transactions", icon: "fa-solid fa-wallet", title: "تراکنش‌های مالی" },
       { id: "support", icon: "fa-solid fa-headset", title: "پشتیبانی", badge: 5 },
     ],
@@ -34,11 +35,11 @@ const NAV_GROUPS = [
   },
 ];
 
-// ⚠️ فقط آیتم "tools" در این نسخه واقعاً صفحه دارد. بقیه فعلاً غیرفعال
+// ⚠️ فقط آیتم‌هایی که واقعاً صفحه دارند اینجا فعال هستند. بقیه فعلاً غیرفعال
 // (بدون onClick) هستند چون هنوز طراحی/پیاده‌سازی نشده‌اند.
-const ENABLED_ITEM_IDS = ["overview", "tools"];
+const ENABLED_ITEM_IDS = ["overview", "tools", "disputes"];
 
-export default function AdminSidebar({ activeItemId, onSelect, pendingToolsCount = 0 }) {
+export default function AdminSidebar({ activeItemId, onSelect, pendingToolsCount = 0, pendingDisputesCount = 0 }) {
   return (
     <aside className="flex h-screen w-[248px] min-w-[220px] shrink-0 flex-col bg-[#14202B] text-[#C8D2DB]">
       <div className="flex items-center gap-2 px-5 pb-4 pt-5 text-md font-semibold text-white">
@@ -55,7 +56,9 @@ export default function AdminSidebar({ activeItemId, onSelect, pendingToolsCount
             {group.items.map((item) => {
               const isEnabled = ENABLED_ITEM_IDS.includes(item.id);
               const isActive = item.id === activeItemId;
-              const badgeValue = item.id === "tools" ? pendingToolsCount : item.badge;
+              let badgeValue = item.badge;
+              if (item.id === "tools") badgeValue = pendingToolsCount;
+              if (item.id === "disputes") badgeValue = pendingDisputesCount;
               return (
                 <div
                   key={item.id}

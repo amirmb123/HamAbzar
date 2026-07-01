@@ -6,6 +6,7 @@ import {
   handoverRental,
   returnRental,
   cancelRental,
+  createDispute,
 } from "../services/api";
 
 export function useMyRentals() {
@@ -56,6 +57,15 @@ export function useMyRentals() {
   const markReturned = (rentalId) => runAction(returnRental, rentalId);
   const cancel    = (rentalId) => runAction(cancelRental, rentalId);
 
+  /** ثبت شکایت برای یک رزرو — خطا را به فرم پرتاب می‌کند تا داخل مودال نمایش داده شود */
+  const fileDispute = useCallback(
+    async (rentalId, reason) => {
+      await createDispute(rentalId, reason);
+      loadAll();
+    },
+    [loadAll]
+  );
+
   return {
     role,
     setRole,
@@ -71,5 +81,6 @@ export function useMyRentals() {
     handover,
     markReturned,
     cancel,
+    fileDispute,
   };
 }

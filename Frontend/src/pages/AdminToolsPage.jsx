@@ -19,6 +19,7 @@ export default function AdminToolsPage() {
 
   const handleSidebarSelect = (itemId) => {
     if (itemId === "overview") navigate("/admin");
+    if (itemId === "disputes") navigate("/admin/disputes");
     // "tools" یعنی همینجا — کاری لازم نیست
   };
 

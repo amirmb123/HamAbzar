@@ -26,7 +26,7 @@ export default function ReservationCard({ tool, range, onReserve }) {
   const hasValidRange = days > 0;
 
   return (
-    <div className="sticky top-4 rounded-lg border border-gray-200 bg-white p-4">
+    <div className="rounded-lg border border-gray-200 bg-white p-4 lg:sticky lg:top-4">
       <div className="mb-3.5 flex items-center justify-between text-md font-medium text-gray-900">
         <span>رزرو ابزار</span>
         <span className="text-base font-medium text-primary-600">
